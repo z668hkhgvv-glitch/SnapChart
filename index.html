@@ -413,7 +413,11 @@
         <input id="dist" class="num-w" type="number" inputmode="numeric" value="10" min="0">
       </div>
       <div class="fld"><label>Ball on</label>
-        <input id="yl" class="num-w" type="number" inputmode="numeric" placeholder="&ndash;" min="0" max="99">
+        <div class="yards-row">
+          <button id="ylSignBtn" class="signbtn loss" type="button" aria-label="Own or opponent side">&#8722;</button>
+          <input id="yl" class="num-w" type="number" inputmode="numeric" placeholder="&ndash;" min="1" max="50">
+        </div>
+        <div class="hint" id="ylHint">Your side &mdash; tap &plusmn; to flip</div>
       </div>
       <div class="fld"><label>Hash</label>
         <div class="seg" id="hash">
@@ -788,7 +792,7 @@
   var currentGameId = null;
   var currentMode = "standard"; // "standard" or "7v7"
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
-  var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, note:""};
+  var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, ylSign:-1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
 
   // ---- autocomplete library (separate key — never cleared by game resets or season changes) ----
@@ -1005,9 +1009,13 @@
     document.getElementById("modeBadge").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? "Scrimmage \u00b7 10-play series" : "");
     document.getElementById("frontFld").style.display = is7 ? "none" : "";   // 7v7 = coverage only
+    var ylSBtn = document.getElementById("ylSignBtn"), ylSHint = document.getElementById("ylHint");
+    if(ylSBtn){ ylSBtn.style.display = is7 ? "none" : ""; }
+    if(ylSHint){ ylSHint.style.display = is7 ? "none" : ""; }
+    if(!is7){ draft.ylSign = -1; paintYlSign(); }
     if(is7){
       draft.type = "pass"; setSeg("ptype", "pass");
-      draft.qtr = "";
+      draft.qtr = ""; draft.ylSign = 1; paintYlSign();
       if(document.getElementById("yl").value === "") document.getElementById("yl").value = 40;
       update7v7Hint();
     } else if(isScrim){
@@ -1155,6 +1163,40 @@
     paintYardSign(); onPlayInput();
   });
 
+  // ---- Ball-on sign (+/− for opponent's/own side) ----
+  function getYL(){
+    var v = Math.abs(parseInt(document.getElementById("yl").value, 10));
+    if(!v || isNaN(v)) return "";
+    return String(draft.ylSign < 0 ? -v : v);
+  }
+  function paintYlSign(){
+    var b = document.getElementById("ylSignBtn");
+    var hint = document.getElementById("ylHint");
+    if(!b) return;
+    if(draft.ylSign < 0){
+      b.textContent = "−"; b.className = "signbtn loss";
+      if(hint) hint.innerHTML = "Your side &mdash; tap &plusmn; to flip";
+    } else {
+      b.textContent = "+"; b.className = "signbtn gain";
+      if(hint) hint.innerHTML = "Opp’s side &mdash; tap &plusmn; to flip";
+    }
+  }
+  function advanceBallOn(ylStr, yards){
+    if(ylStr === "" || ylStr == null) return null;
+    var yl = Number(ylStr); if(isNaN(yl)) return null;
+    var pos = (yl <= 0) ? -yl : (100 - yl);
+    var newPos = pos + Number(yards);
+    if(newPos <= 0 || newPos >= 100) return null; // end zone — let coach handle
+    var newSign = (newPos < 50) ? -1 : 1;
+    var newYl = (newPos < 50) ? newPos : (100 - newPos);
+    return {yl: String(Math.round(newYl) || 50), sign: newSign};
+  }
+  document.getElementById("ylSignBtn").addEventListener("click", function(){
+    draft.ylSign = (draft.ylSign < 0) ? 1 : -1;
+    paintYlSign();
+  });
+  paintYlSign();
+
   // ---- Motion checkbox + name field ----
   var motionBtn = document.getElementById("motionBtn");
   function paintMotion(){
@@ -1274,7 +1316,7 @@
       var ep = plays.find(function(x){ return x.id === editingId; });
       if(ep){
         ep.qtr=draft.qtr; ep.down=draft.down; ep.dist=dist;
-        ep.yl=document.getElementById("yl").value; ep.hash=draft.hash; ep.type=draft.type;
+        ep.yl=getYL(); ep.hash=draft.hash; ep.type=draft.type;
         ep.form=form; ep.call=call; ep.motion=motion; ep.front=front; ep.coverage=coverage; ep.yards=yards;
         ep.tags=draft.tags.slice(); ep.success=draft.effective; ep.auto=!draft.effTouched; ep.note=draft.note;
       }
@@ -1291,7 +1333,7 @@
       id: Date.now()+"_"+Math.random().toString(36).slice(2,6),
       mode: currentMode,
       qtr: draft.qtr, down: isScrim ? "" : draft.down, dist: isScrim ? "" : dist,
-      yl: document.getElementById("yl").value, hash: draft.hash, type: draft.type,
+      yl: getYL(), hash: draft.hash, type: draft.type,
       form: form, call: call, motion: motion, front: front, coverage: coverage, yards: yards,
       tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note
     };
@@ -1316,6 +1358,11 @@
     } else if(isScrim){
       updateScrimHint();
     }
+    // auto-advance ball-on (standard + scrimmage only; 7v7 handled above)
+    if(currentMode !== "7v7"){
+      var adv = advanceBallOn(p.yl, p.yards);
+      if(adv){ document.getElementById("yl").value = adv.yl; draft.ylSign = adv.sign; paintYlSign(); }
+    }
     save(); render();
   }
   function startEdit(id){
@@ -1325,7 +1372,8 @@
     draft.qtr=p.qtr; draft.down=p.down; draft.hash=p.hash; draft.type=p.type;
     setSeg("qtr", p.qtr); setSeg("down", p.down); setSeg("hash", p.hash); setSeg("ptype", p.type);
     document.getElementById("dist").value = p.dist;
-    document.getElementById("yl").value = p.yl;
+    var ylNum = Number(p.yl); draft.ylSign = (ylNum < 0) ? -1 : 1; paintYlSign();
+    document.getElementById("yl").value = Math.abs(ylNum) || "";
     document.getElementById("form").value = p.form;
     document.getElementById("call").value = p.call;
     document.getElementById("yards").value = Math.abs(p.yards);
