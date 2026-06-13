@@ -368,7 +368,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.13</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.14</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1413,7 +1413,7 @@
 
   function toggleSuccess(id){ var p=plays.find(function(x){return x.id===id;});
     if(!p) return; p.success=!p.success; p.auto=false; save(); render(); }
-  function delPlay(id){ plays=plays.filter(function(x){return x.id!==id;}); save(); render(); }
+  function delPlay(id){ if(!confirm("Delete this play? This can't be undone.")) return; plays=plays.filter(function(x){return x.id!==id;}); save(); render(); }
 
   function pct(n,d){ return d? Math.round(100*n/d)+"%" : "0%"; }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
