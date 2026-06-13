@@ -650,6 +650,22 @@
         </div>
       </div>
       <div class="st-row">
+        <span class="st-label">Standard &mdash; 3rd down</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+          <input id="stEff3" class="st-input st-num" type="number" value="100" min="0" max="100">
+          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+        </div>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Standard &mdash; 4th down</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+          <input id="stEff4" class="st-input st-num" type="number" value="100" min="0" max="100">
+          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+        </div>
+      </div>
+      <div class="st-row">
         <span class="st-label">Scrimmage</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
@@ -727,7 +743,7 @@
     teamName:"Brandywine Bulldogs", coachName:"",
     teamColor:"#16317F", teamAccent:"#1E44C4", teamTextColor:"white",
     defaultMode:"standard", defaultDist:10,
-    effStd1:5, effStd2:50, effScrim:5,
+    effStd1:5, effStd2:50, effStd3:100, effStd4:100, effScrim:5,
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
   };
   var COLOR_PALETTE = [
@@ -796,6 +812,8 @@
       if(d.defaultDist != null) settings.defaultDist = Number(d.defaultDist)||10;
       if(d.effStd1 != null) settings.effStd1 = Number(d.effStd1)||5;
       if(d.effStd2 != null) settings.effStd2 = Number(d.effStd2)||50;
+      if(d.effStd3 != null) settings.effStd3 = Number(d.effStd3)||100;
+      if(d.effStd4 != null) settings.effStd4 = Number(d.effStd4)||100;
       if(d.effScrim != null) settings.effScrim = Number(d.effScrim)||5;
       if(d.tags && d.tags.length) settings.tags = d.tags;
     }catch(e){}
@@ -872,6 +890,8 @@
     document.getElementById("stDefaultDist").value = settings.defaultDist;
     document.getElementById("stEff1").value = settings.effStd1;
     document.getElementById("stEff2").value = settings.effStd2;
+    document.getElementById("stEff3").value = settings.effStd3;
+    document.getElementById("stEff4").value = settings.effStd4;
     document.getElementById("stEffScrim").value = settings.effScrim;
     // tags and library
     renderSettingsTags();
@@ -915,6 +935,8 @@
     if(dist > 0 && yards >= dist) return true;
     if(down === 1) return yards >= (settings.effStd1||5);
     if(down === 2) return yards >= ((settings.effStd2||50)/100)*dist;
+    if(down === 3) return yards >= ((settings.effStd3||100)/100)*dist;
+    if(down === 4) return yards >= ((settings.effStd4||100)/100)*dist;
     return false;
   }
   function autoEffective7v7(down, toGo, yards){
@@ -1448,6 +1470,8 @@
     settings.defaultDist = Math.max(1, parseInt(document.getElementById("stDefaultDist").value,10)||10);
     settings.effStd1 = Math.max(0, parseInt(document.getElementById("stEff1").value,10)||5);
     settings.effStd2 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff2").value,10)||50));
+    settings.effStd3 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff3").value,10)||100));
+    settings.effStd4 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff4").value,10)||100));
     settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
     saveSettings(); applySettings();
     var btn=this; btn.textContent="✓ Saved!";
