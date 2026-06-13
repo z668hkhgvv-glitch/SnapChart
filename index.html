@@ -203,6 +203,16 @@
   .back{flex:none;width:46px;height:46px;border-radius:10px;cursor:pointer;font-size:24px;line-height:1;
     background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);color:#fff;}
   .report-toggle{display:flex;gap:10px;margin:16px 0 14px;flex-wrap:wrap}
+  .note-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:2px solid var(--line);background:#fff;color:var(--royal);cursor:pointer;transition:background .15s}
+  .note-btn.has-note{background:var(--royal);border-color:var(--royal);color:#fff}
+  .note-icon{background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;border-radius:4px}
+  .note-icon:hover{background:var(--royal-bg)}
+  .modal textarea{width:100%;box-sizing:border-box;min-height:120px;padding:10px 12px;border:2px solid var(--line);border-radius:8px;font-family:var(--body);font-size:15px;resize:vertical;margin:8px 0 4px}
+  .modal textarea:focus{outline:none;border-color:var(--royal-2)}
+  .notes-play{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+  .notes-play-header{font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .notes-play-num{font-family:var(--num);font-weight:700;font-size:16px;color:var(--ink)}
+  .notes-play-note{font-size:15px;color:var(--ink);white-space:pre-wrap;line-height:1.5}
   .rbtn{flex:1 1 120px;font-family:var(--num);text-transform:uppercase;letter-spacing:.04em;font-size:16px;
     font-weight:600;height:54px;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;cursor:pointer;}
   .rbtn.on{background:var(--royal-2);border-color:var(--royal-2);color:#fff}
@@ -307,7 +317,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.7</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.8</span></h1>
         <div class="sub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -431,6 +441,7 @@
     </div>
 
     <div class="row"><button class="add" id="addBtn">+ Add Play</button>
+      <button id="notesBtn" class="note-btn" type="button">&#128221; Add Note</button>
       <button class="cancel" id="cancelEdit" type="button" hidden>Cancel</button></div>
   </section>
 
@@ -453,7 +464,7 @@
     <table>
       <thead><tr>
         <th>#</th><th>Qtr</th><th>Dn &amp; Dist</th><th>Ball</th><th>Type</th>
-        <th>Formation</th><th>Play call</th><th>Yds</th><th>Effective</th><th>Result</th><th></th>
+        <th>Formation</th><th>Play call</th><th>Yds</th><th>Effective</th><th>Result</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody id="logBody"></tbody>
     </table>
@@ -478,6 +489,7 @@
     <button id="rbDown" class="rbtn">Best by Down</button>
     <button id="rbHash" class="rbtn">By Hash</button>
     <button id="rbSeries" class="rbtn" style="display:none">By Series</button>
+    <button id="rbNotes" class="rbtn">Game Notes</button>
   </div>
 
   <div class="report-summary" id="reportSummary"></div>
@@ -532,6 +544,17 @@
   <div id="seasonBody"></div>
 </div>
 
+<div class="modal-back" id="notesModal" hidden>
+  <div class="modal">
+    <h2 id="notesModalTitle">Add Note</h2>
+    <textarea id="notesText" placeholder="Enter notes for this play..."></textarea>
+    <div class="modal-btns">
+      <button class="primary" id="notesSave">Save Note</button>
+    </div>
+    <button class="modal-cancel" id="notesCancel">Cancel</button>
+  </div>
+</div>
+
 <div class="modal-back" id="endGameModal" hidden>
   <div class="modal">
     <h2>End this game?</h2>
@@ -567,7 +590,7 @@
   var currentGameId = null;
   var currentMode = "standard"; // "standard" or "7v7"
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
-  var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1};
+  var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
 
   // ---- storage (localStorage; works offline on the home screen) ----
@@ -824,6 +847,7 @@
     draft.effTouched = false; draft.fdAuto = false; draft.fdTouched = false;
     draft.motionOn = false; document.getElementById("motion").value = ""; paintMotion();
     draft.yardSign = 1; paintYardSign();
+    draft.note = ""; updateNotesBtn();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
     if(focus) document.getElementById("form").focus();
@@ -843,7 +867,7 @@
         ep.qtr=draft.qtr; ep.down=draft.down; ep.dist=dist;
         ep.yl=document.getElementById("yl").value; ep.hash=draft.hash; ep.type=draft.type;
         ep.form=form; ep.call=call; ep.motion=motion; ep.front=front; ep.coverage=coverage; ep.yards=yards;
-        ep.tags=draft.tags.slice(); ep.success=draft.effective; ep.auto=!draft.effTouched;
+        ep.tags=draft.tags.slice(); ep.success=draft.effective; ep.auto=!draft.effTouched; ep.note=draft.note;
       }
       learn(form, call, motion, front, coverage);
       finishEntry(false);
@@ -858,7 +882,7 @@
       qtr: draft.qtr, down: isScrim ? "" : draft.down, dist: isScrim ? "" : dist,
       yl: document.getElementById("yl").value, hash: draft.hash, type: draft.type,
       form: form, call: call, motion: motion, front: front, coverage: coverage, yards: yards,
-      tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched
+      tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note
     };
     if(isScrim){ p.playNum = (plays.length % 10) + 1; p.series = Math.floor(plays.length / 10) + 1; }
     plays.push(p);
@@ -896,6 +920,7 @@
       b.classList.toggle("on", draft.tags.indexOf(b.getAttribute("data-v")) > -1); });
     draft.effective = p.success; draft.effTouched = true; paintEff();
     draft.fdTouched = true; // keep the loaded values steady while fixing
+    draft.note = p.note || ""; updateNotesBtn();
     document.getElementById("addBtn").textContent = "Save changes";
     document.getElementById("cancelEdit").hidden = false;
     document.querySelector(".entry").classList.add("editing");
@@ -909,7 +934,9 @@
   document.getElementById("call").addEventListener("keydown", function(e){ if(e.key==="Enter") addPlay(); });
   document.getElementById("yards").addEventListener("keydown", function(e){ if(e.key==="Enter") addPlay(); });
   document.getElementById("logBody").addEventListener("click", function(e){
-    if(e.target.closest(".del") || e.target.closest(".succ")) return; // those have their own jobs
+    if(e.target.closest(".del") || e.target.closest(".succ")) return;
+    var ni = e.target.closest(".note-icon");
+    if(ni){ openNotesModal(ni.getAttribute("data-note")); return; }
     var tr = e.target.closest("tr[data-id]"); if(!tr) return;
     startEdit(tr.getAttribute("data-id"));
   });
@@ -933,7 +960,7 @@
   function render(){
     var body = document.getElementById("logBody");
     if(!plays.length){
-      body.innerHTML = '<tr><td colspan="11"><div class="empty"><div class="big">No plays yet</div>Log your first snap above and the chart fills in.</div></td></tr>';
+      body.innerHTML = '<tr><td colspan="12"><div class="empty"><div class="big">No plays yet</div>Log your first snap above and the chart fills in.</div></td></tr>';
     } else {
       body.innerHTML = plays.map(function(p,i){
         var dir = p.yards>0?"up":(p.yards<0?"down":"flat"); var sign = p.yards>0?"+":"";
@@ -949,6 +976,7 @@
           '<td><span class="res '+dir+'">'+sign+p.yards+'</span></td>'+
           '<td><button class="succ '+(p.success?"y":"n")+'" data-id="'+p.id+'">'+(p.success?"\u2713":"\u2717")+'</button></td>'+
           '<td><div class="tagrow">'+(tags||'<span style="color:var(--muted)">&mdash;</span>')+'</div></td>'+
+          '<td>'+(p.note?'<button class="note-icon" data-note="'+p.id+'" title="'+esc(p.note)+'">&#128221;</button>':'<span style="color:var(--muted)">&#8212;</span>')+'</td>'+
           '<td><button class="del" data-del="'+p.id+'" title="Delete">&times;</button></td>'+
         '</tr>';
       }).join("");
@@ -1057,6 +1085,42 @@
     document.getElementById("endGameModal").hidden = true;
   });
   document.getElementById("endGameModal").addEventListener("click", function(e){
+    if(e.target === this) this.hidden = true;
+  });
+
+  // ---- notes modal ----
+  var noteTargetId = null;
+  function updateNotesBtn(){
+    var btn = document.getElementById("notesBtn");
+    if(draft.note){ btn.textContent = "\u{1F4DD} Note ✓"; btn.classList.add("has-note"); }
+    else { btn.textContent = "\u{1F4DD} Add Note"; btn.classList.remove("has-note"); }
+  }
+  function openNotesModal(targetId){
+    noteTargetId = targetId || null;
+    var forPlay = noteTargetId !== null;
+    document.getElementById("notesModalTitle").textContent = forPlay ? "Play Note" : "Add Note";
+    var text = forPlay
+      ? ((plays.find(function(p){ return p.id===noteTargetId; })||{}).note||"")
+      : draft.note;
+    document.getElementById("notesText").value = text;
+    document.getElementById("notesModal").hidden = false;
+    document.getElementById("notesText").focus();
+  }
+  document.getElementById("notesBtn").addEventListener("click", function(){ openNotesModal(null); });
+  document.getElementById("notesSave").addEventListener("click", function(){
+    var text = document.getElementById("notesText").value.trim();
+    if(noteTargetId !== null){
+      var p = plays.find(function(x){ return x.id===noteTargetId; });
+      if(p){ p.note = text; save(); render(); }
+    } else {
+      draft.note = text; updateNotesBtn();
+    }
+    document.getElementById("notesModal").hidden = true;
+  });
+  document.getElementById("notesCancel").addEventListener("click", function(){
+    document.getElementById("notesModal").hidden = true;
+  });
+  document.getElementById("notesModal").addEventListener("click", function(e){
     if(e.target === this) this.hidden = true;
   });
   document.getElementById("modeCancel").addEventListener("click", function(){
@@ -1304,6 +1368,27 @@
     });
     return html;
   }
+  function buildNotesReport(){
+    var withNotes = plays.filter(function(p){ return p.note; });
+    if(!withNotes.length) return '<div class="empty"><div class="big">No notes yet</div>Tap &#128221; Add Note while logging a play to add notes.</div>';
+    return withNotes.map(function(p){
+      var idx = plays.indexOf(p)+1;
+      var sign = p.yards>0?"+":"";
+      var detail = [
+        p.qtr ? "Q"+esc(p.qtr) : "",
+        p.down ? dnDist(p) : "",
+        p.yl ? "Ball "+esc(p.yl) : "",
+        p.form ? esc(p.form) : "",
+        p.call ? esc(p.call) : "",
+        sign+p.yards+" yds",
+        p.success ? "✓ Effective" : ""
+      ].filter(Boolean).join(" · ");
+      return '<div class="notes-play">'+
+        '<div class="notes-play-header"><span class="notes-play-num">#'+idx+'</span> '+detail+'</div>'+
+        '<div class="notes-play-note">'+esc(p.note)+'</div>'+
+      '</div>';
+    }).join("");
+  }
   function renderReport(){
     document.getElementById("rbMost").classList.toggle("on", reportMode === "most");
     document.getElementById("rbLeast").classList.toggle("on", reportMode === "least");
@@ -1311,6 +1396,7 @@
     document.getElementById("rbDown").classList.toggle("on", reportMode === "down");
     document.getElementById("rbHash").classList.toggle("on", reportMode === "hash");
     document.getElementById("rbSeries").classList.toggle("on", reportMode === "series");
+    document.getElementById("rbNotes").classList.toggle("on", reportMode === "notes");
 
     var n = plays.length;
     var wrap = document.getElementById("reportTableWrap");
@@ -1356,6 +1442,13 @@
       return;
     }
 
+    if(reportMode === "notes"){
+      var withNotes = plays.filter(function(p){ return p.note; });
+      sum.innerHTML = withNotes.length ? withNotes.length+" play"+(withNotes.length===1?"":"s")+" with notes" : "No notes added yet";
+      wrap.innerHTML = buildNotesReport();
+      return;
+    }
+
     if(reportMode === "call"){
       sum.innerHTML = groups + " play call" + (groups===1?"":"s") +
         " \u00b7 ranked by success rate \u00b7 <span class=\"backhint\">tap a play call to see its snaps</span>";
@@ -1395,6 +1488,7 @@
   document.getElementById("rbDown").addEventListener("click", function(){ reportMode="down"; detailCall=null; renderReport(); });
   document.getElementById("rbHash").addEventListener("click", function(){ reportMode="hash"; detailCall=null; renderReport(); });
   document.getElementById("rbSeries").addEventListener("click", function(){ reportMode="series"; detailCall=null; renderReport(); });
+  document.getElementById("rbNotes").addEventListener("click", function(){ reportMode="notes"; detailCall=null; renderReport(); });
   document.getElementById("reportTableWrap").addEventListener("click", function(e){
     // drill into a play call group
     if(reportMode === "call" && !detailCall){
