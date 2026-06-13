@@ -30,6 +30,8 @@
     --muted:#5b6480;
     --num:'Oswald','Arial Narrow','Roboto Condensed',sans-serif;
     --body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --board-fg:#fff;
+    --board-fg-dim:rgba(255,255,255,.7);
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}
@@ -38,23 +40,27 @@
     -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
   .wrap{max-width:1100px;margin:0 auto;padding:0 14px 60px}
 
-  header.board{background:linear-gradient(135deg,var(--royal),var(--royal-2));color:#fff;
+  header.board{background:linear-gradient(135deg,var(--royal),var(--royal-2));color:var(--board-fg);
     border-radius:0 0 16px 16px;padding:16px 18px 14px;margin:0 -14px 16px;position:relative;overflow:hidden;}
   header.board::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;
     background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 40px);opacity:.5;}
   .board-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
   .board h1{font-family:var(--num);font-weight:700;letter-spacing:.05em;text-transform:uppercase;
     font-size:26px;margin:0;line-height:1;}
-  .board .sub{font-size:12px;color:#d4ddf7;margin-top:5px;letter-spacing:.03em}
-  .appversion{font-family:var(--num);font-size:11px;font-weight:600;color:rgba(255,255,255,.45);margin-left:8px;letter-spacing:.04em;vertical-align:middle}
-  .offstat{display:inline-block;margin-top:7px;font-size:11px;font-weight:600;color:#d7e4ff;
+  .board .sub{font-size:12px;color:var(--board-fg-dim);margin-top:5px;letter-spacing:.03em}
+  .appversion{font-family:var(--num);font-size:11px;font-weight:600;color:var(--board-fg-dim);margin-left:8px;letter-spacing:.04em;vertical-align:middle}
+  .offstat{display:inline-block;margin-top:7px;font-size:11px;font-weight:600;color:var(--board-fg);
     background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);padding:3px 10px;border-radius:999px}
   .offstat.ready{color:#c7f3d6;background:rgba(40,170,90,.28);border-color:rgba(150,230,180,.55)}
   .offstat:empty{display:none}
   .game-meta{display:flex;gap:8px;align-items:center}
-  .game-meta input{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;
+  .game-meta input{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:var(--board-fg);
     border-radius:8px;padding:8px 10px;font-family:var(--body);font-size:13px;width:140px;}
-  .game-meta input::placeholder{color:#c6d3f4}
+  .game-meta input::placeholder{color:var(--board-fg-dim)}
+  .settings-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:var(--board-fg);
+    width:38px;height:38px;border-radius:9px;font-size:20px;cursor:pointer;flex:none;
+    display:flex;align-items:center;justify-content:center;line-height:1}
+  .settings-btn:hover{background:rgba(255,255,255,.3)}
 
   .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}
@@ -201,7 +207,7 @@
   .report-board{display:flex;align-items:center;gap:14px}
   .report-board h1{font-size:24px}
   .back{flex:none;width:46px;height:46px;border-radius:10px;cursor:pointer;font-size:24px;line-height:1;
-    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);color:#fff;}
+    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);color:var(--board-fg);}
   .report-toggle{display:flex;gap:10px;margin:16px 0 14px;flex-wrap:wrap}
   .note-btn{font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:2px solid var(--line);background:#fff;color:var(--royal);cursor:pointer;transition:background .15s}
   .note-btn.has-note{background:var(--royal);border-color:var(--royal);color:#fff}
@@ -230,7 +236,7 @@
 
   @media print{.report-toggle,.back{display:none!important}}
 
-  .modebadge{display:inline-block;margin-top:7px;margin-left:6px;font-size:11px;font-weight:700;color:#fff;
+  .modebadge{display:inline-block;margin-top:7px;margin-left:6px;font-size:11px;font-weight:700;color:var(--board-fg);
     background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5);padding:3px 10px;border-radius:999px;letter-spacing:.03em}
   .series-hint{font-family:var(--num);font-size:15px;letter-spacing:.02em;color:var(--royal);background:var(--royal-bg);
     border:1px solid var(--royal-line);border-radius:10px;padding:9px 14px;width:100%;font-weight:600}
@@ -288,6 +294,38 @@
     .sp-bar,.sp-check,.sp-wm,.sp-tagwrap,.sp-underline,.sp-continue,.sp-footer{
       animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}
   }
+
+  /* ---- Settings panel ---- */
+  .settings-wrap{max-width:1100px;margin:0 auto;padding:0 14px 60px}
+  .settings-body{padding:16px 0}
+  .st-section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .st-h{font-family:var(--num);font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--royal);margin:0 0 12px;font-weight:600}
+  .st-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--chalk)}
+  .st-row:last-child{border-bottom:none}
+  .st-label{font-size:14px;font-weight:600;color:var(--ink);flex-shrink:0;min-width:160px}
+  .st-input{padding:8px 10px;border:2px solid var(--line);border-radius:8px;font-family:var(--body);font-size:14px;color:var(--ink);background:#fff}
+  .st-input:focus{outline:none;border-color:var(--royal-2)}
+  .st-input.wide{min-width:200px}
+  .st-num{width:80px}
+  .st-desc{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+  .color-grid{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0}
+  .color-swatch{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;
+    display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;
+    transition:transform .12s;flex-none}
+  .color-swatch.selected{border-color:var(--ink);transform:scale(1.18)}
+  .color-swatch:hover{transform:scale(1.1)}
+  .color-name-label{font-size:12px;color:var(--muted);margin-top:5px;min-height:16px}
+  .st-tag-list{margin-bottom:8px}
+  .st-tag-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;
+    border-bottom:1px solid var(--chalk);font-size:14px}
+  .st-tag-row:last-child{border-bottom:none}
+  .st-tag-del{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+    padding:2px 8px;border-radius:6px;line-height:1}
+  .st-tag-del:hover{color:var(--bad);background:var(--bad-bg)}
+  .lib-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;
+    font-size:13px;color:var(--muted);border-top:1px dashed var(--line)}
+  .lib-row:first-child{border-top:none}
+  .lib-row b{font-family:var(--num);font-weight:700;color:var(--ink)}
 </style>
 
 <div id="splash">
@@ -317,14 +355,15 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.10</span></h1>
-        <div class="sub">Brandywine Bulldogs &middot; tap to log every snap</div>
+        <h1>SnapChart<span class="appversion">1.0.11</span></h1>
+        <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
       </div>
       <div class="game-meta">
         <input id="opp" placeholder="vs Opponent">
         <input id="gdate" placeholder="Date / Week">
+        <button id="settingsBtn" class="settings-btn" type="button" aria-label="Settings">&#9881;</button>
       </div>
     </div>
   </header>
@@ -544,6 +583,105 @@
   <div id="seasonBody"></div>
 </div>
 
+<div class="settings-wrap" id="settings" hidden>
+  <header class="board report-board">
+    <button class="back" id="settingsBack" aria-label="Back">&larr;</button>
+    <div>
+      <h1>Settings</h1>
+      <div class="sub">Team &amp; app preferences</div>
+    </div>
+  </header>
+
+  <div class="settings-body">
+    <div class="st-section">
+      <div class="st-h">Team</div>
+      <div class="st-row">
+        <span class="st-label">Team Name</span>
+        <input id="stTeamName" class="st-input wide" type="text" placeholder="e.g. Brandywine Bulldogs">
+      </div>
+      <div class="st-row">
+        <span class="st-label">Coach Name</span>
+        <input id="stCoachName" class="st-input wide" type="text" placeholder="e.g. Coach Smith">
+      </div>
+      <div class="st-row">
+        <span class="st-label">Team Color</span>
+        <div>
+          <div class="color-grid" id="colorGrid"></div>
+          <div class="color-name-label" id="colorNameLabel"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-section">
+      <div class="st-h">Game Defaults</div>
+      <div class="st-row">
+        <span class="st-label">Default Mode</span>
+        <div class="seg" id="stMode">
+          <button data-v="standard">Standard</button>
+          <button data-v="7v7">7v7</button>
+          <button data-v="scrimmage">Scrim</button>
+        </div>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Default Yards to Go</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="stDefaultDist" class="st-input st-num" type="number" value="10" min="1" max="99">
+          <span style="font-size:13px;color:var(--muted)">yards</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-section">
+      <div class="st-h">Effective Play Thresholds</div>
+      <div class="st-row">
+        <span class="st-label">Standard &mdash; 1st down</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+          <input id="stEff1" class="st-input st-num" type="number" value="5" min="0" max="30">
+          <span style="font-size:13px;color:var(--muted)">yds</span>
+        </div>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Standard &mdash; 2nd down</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+          <input id="stEff2" class="st-input st-num" type="number" value="50" min="0" max="100">
+          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+        </div>
+      </div>
+      <div class="st-row">
+        <span class="st-label">Scrimmage</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+          <input id="stEffScrim" class="st-input st-num" type="number" value="5" min="0" max="30">
+          <span style="font-size:13px;color:var(--muted)">yds</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-section">
+      <div class="st-h">Quick Result Tags</div>
+      <p class="st-desc">Tags available in the play entry form. Add custom tags for your playbook.</p>
+      <div class="st-tag-list" id="stTagList"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="stNewTag" class="st-input" type="text" placeholder="New tag name&hellip;" style="flex:1;min-width:0">
+        <button class="add" id="stAddTag" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
+      </div>
+    </div>
+
+    <div class="st-section">
+      <div class="st-h">Autocomplete Library</div>
+      <p class="st-desc">Formation, play call, front, and coverage entries are saved permanently across all games and seasons.</p>
+      <div id="stLibCounts"></div>
+      <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Library</button>
+    </div>
+
+    <div class="st-section" style="padding:12px 18px">
+      <button class="add" id="stSave" style="width:100%">Save Settings</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-back" id="notesModal" hidden>
   <div class="modal">
     <h2 id="notesModalTitle">Add Note</h2>
@@ -584,6 +722,32 @@
   "use strict";
   var KEY = "bulldogs_play_chart_v1";
   var LIB_KEY = "snapchart_library_v1";
+  var SETTINGS_KEY = "snapchart_settings_v1";
+  var settings = {
+    teamName:"Brandywine Bulldogs", coachName:"",
+    teamColor:"#16317F", teamAccent:"#1E44C4", teamTextColor:"white",
+    defaultMode:"standard", defaultDist:10,
+    effStd1:5, effStd2:50, effScrim:5,
+    tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
+  };
+  var COLOR_PALETTE = [
+    {name:"Royal Blue",   color:"#16317F", accent:"#1E44C4", text:"white"},
+    {name:"Navy",         color:"#003087", accent:"#1A56C9", text:"white"},
+    {name:"Hunter Green", color:"#1B5E20", accent:"#2E7D32", text:"white"},
+    {name:"Forest Green", color:"#2E7D32", accent:"#43A047", text:"white"},
+    {name:"Teal",         color:"#00695C", accent:"#0097A7", text:"white"},
+    {name:"Maroon",       color:"#800020", accent:"#B00030", text:"white"},
+    {name:"Crimson",      color:"#9D1939", accent:"#C62828", text:"white"},
+    {name:"Dark Red",     color:"#B71C1C", accent:"#D32F2F", text:"white"},
+    {name:"Purple",       color:"#4A0072", accent:"#7B1FA2", text:"white"},
+    {name:"Midnight",     color:"#1A1A2E", accent:"#16213E", text:"white"},
+    {name:"Charcoal",     color:"#37474F", accent:"#546E7A", text:"white"},
+    {name:"Black",        color:"#1A1A1A", accent:"#3A3A3A", text:"white"},
+    {name:"Brown",        color:"#5D3A1A", accent:"#795548", text:"white"},
+    {name:"Burnt Orange", color:"#BF5700", accent:"#E65100", text:"white"},
+    {name:"Gold",         color:"#B8860B", accent:"#DAA520", text:"black"},
+    {name:"Slate Blue",   color:"#3949AB", accent:"#5C6BC0", text:"white"}
+  ];
   var plays = [];
   var meta = {opp:"", date:""};
   var suggest = {forms:[], calls:[], motions:[], fronts:[]};
@@ -614,6 +778,117 @@
     }catch(e){}
   }
 
+  // ---- settings ----
+  function saveSettings(){
+    try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
+  }
+  function loadSettings(){
+    try{
+      var raw = localStorage.getItem(SETTINGS_KEY);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(d.teamName !== undefined) settings.teamName = d.teamName;
+      if(d.coachName !== undefined) settings.coachName = d.coachName;
+      if(d.teamColor) settings.teamColor = d.teamColor;
+      if(d.teamAccent) settings.teamAccent = d.teamAccent;
+      if(d.teamTextColor) settings.teamTextColor = d.teamTextColor;
+      if(d.defaultMode) settings.defaultMode = d.defaultMode;
+      if(d.defaultDist != null) settings.defaultDist = Number(d.defaultDist)||10;
+      if(d.effStd1 != null) settings.effStd1 = Number(d.effStd1)||5;
+      if(d.effStd2 != null) settings.effStd2 = Number(d.effStd2)||50;
+      if(d.effScrim != null) settings.effScrim = Number(d.effScrim)||5;
+      if(d.tags && d.tags.length) settings.tags = d.tags;
+    }catch(e){}
+  }
+  function applySettings(){
+    document.documentElement.style.setProperty("--royal", settings.teamColor);
+    document.documentElement.style.setProperty("--royal-2", settings.teamAccent);
+    var isLight = (settings.teamTextColor === "black");
+    document.documentElement.style.setProperty("--board-fg", isLight ? "#0F1830" : "#fff");
+    document.documentElement.style.setProperty("--board-fg-dim", isLight ? "rgba(15,24,48,.55)" : "rgba(255,255,255,.7)");
+    var sub = document.getElementById("headerSub");
+    if(sub) sub.textContent = (settings.teamName||"SnapChart") + " · tap to log every snap";
+    renderTagChips();
+  }
+  function renderTagChips(){
+    var container = document.getElementById("tags");
+    if(!container) return;
+    container.innerHTML = settings.tags.map(function(t){
+      return '<button class="chip" data-v="'+esc(t)+'">'+esc(t)+'</button>';
+    }).join("");
+    // re-apply any currently selected chips
+    if(draft && draft.tags){
+      [].forEach.call(container.querySelectorAll(".chip"), function(b){
+        if(draft.tags.indexOf(b.getAttribute("data-v")) > -1) b.classList.add("on");
+      });
+    }
+  }
+  function renderSettingsTags(){
+    var list = document.getElementById("stTagList");
+    if(!list) return;
+    list.innerHTML = settings.tags.map(function(tag, i){
+      return '<div class="st-tag-row"><span>'+esc(tag)+'</span>'+
+        '<button class="st-tag-del" data-del="'+i+'" title="Remove">&times;</button></div>';
+    }).join("");
+  }
+  function renderLibCounts(){
+    var el = document.getElementById("stLibCounts");
+    if(!el) return;
+    var rows = [
+      ["Formations", (suggest.forms||[]).length],
+      ["Play calls", (suggest.calls||[]).length],
+      ["Motions", (suggest.motions||[]).length],
+      ["Fronts", (suggest.fronts||[]).length],
+      ["Coverages", (suggest.coverages||[]).length]
+    ];
+    el.innerHTML = rows.map(function(r){
+      return '<div class="lib-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';
+    }).join("");
+  }
+  function renderSettingsPanel(){
+    document.getElementById("stTeamName").value = settings.teamName||"";
+    document.getElementById("stCoachName").value = settings.coachName||"";
+    // color grid
+    var grid = document.getElementById("colorGrid");
+    grid.innerHTML = COLOR_PALETTE.map(function(c, idx){
+      var sel = (c.color.toUpperCase() === settings.teamColor.toUpperCase());
+      var chk = (c.text === "black") ? "#0F1830" : "#fff";
+      return '<button class="color-swatch'+(sel?" selected":"") +
+        '" data-idx="'+idx+'" style="background:'+c.color+'" title="'+esc(c.name)+'">' +
+        (sel ? '<span style="color:'+chk+'">&#10003;</span>' : "") +
+        '</button>';
+    }).join("");
+    var cur = null;
+    for(var i=0;i<COLOR_PALETTE.length;i++){
+      if(COLOR_PALETTE[i].color.toUpperCase()===settings.teamColor.toUpperCase()){ cur=COLOR_PALETTE[i]; break; }
+    }
+    document.getElementById("colorNameLabel").textContent = cur ? cur.name : "";
+    // mode seg
+    var modeBox = document.getElementById("stMode");
+    [].forEach.call(modeBox.children, function(b){
+      b.classList.toggle("on", b.getAttribute("data-v") === settings.defaultMode);
+    });
+    // numbers
+    document.getElementById("stDefaultDist").value = settings.defaultDist;
+    document.getElementById("stEff1").value = settings.effStd1;
+    document.getElementById("stEff2").value = settings.effStd2;
+    document.getElementById("stEffScrim").value = settings.effScrim;
+    // tags and library
+    renderSettingsTags();
+    renderLibCounts();
+  }
+  function openSettings(){
+    document.getElementById("main").hidden = true;
+    document.getElementById("settings").hidden = false;
+    renderSettingsPanel();
+    window.scrollTo(0,0);
+  }
+  function closeSettings(){
+    document.getElementById("settings").hidden = true;
+    document.getElementById("main").hidden = false;
+    window.scrollTo(0,0);
+  }
+
   // ---- storage (localStorage; works offline on the home screen) ----
   function save(){
     try{ localStorage.setItem(KEY, JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode})); }
@@ -635,11 +910,11 @@
   // 7v7: 4 plays per series to reach the target line. Reaching it = effective; otherwise stay on pace.
   function autoEffective(down, dist, yards){
     if(currentMode === "7v7") return autoEffective7v7(down, dist, yards);
-    if(currentMode === "scrimmage") return (Number(yards)||0) >= 5;   // scrimmage: 5+ yards
+    if(currentMode === "scrimmage") return (Number(yards)||0) >= (settings.effScrim||5);
     dist = Number(dist)||0; yards = Number(yards)||0; down = Number(down)||1;
     if(dist > 0 && yards >= dist) return true;
-    if(down === 1) return yards >= 5;
-    if(down === 2) return yards >= 0.5*dist;
+    if(down === 1) return yards >= (settings.effStd1||5);
+    if(down === 2) return yards >= ((settings.effStd2||50)/100)*dist;
     return false;
   }
   function autoEffective7v7(down, toGo, yards){
@@ -921,7 +1196,7 @@
       var d = parseInt(preDown, 10);
       if(yards >= preDist){
         draft.down = "1"; setSeg("down", "1");
-        document.getElementById("dist").value = 10;
+        document.getElementById("dist").value = settings.defaultDist||10;
       } else if(d < 4){
         draft.down = String(d+1); setSeg("down", String(d+1));
         document.getElementById("dist").value = Math.max(preDist - yards, 1);
@@ -1087,7 +1362,7 @@
     draft.qtr = (mode==="standard") ? "1" : ""; setSeg("qtr", "1");
     draft.down = (mode==="scrimmage") ? "" : "1"; setSeg("down", "1");
     draft.type = (mode==="7v7") ? "pass" : "run"; setSeg("ptype", draft.type);
-    document.getElementById("dist").value = (mode==="standard") ? "10" : "";
+    document.getElementById("dist").value = (mode==="standard") ? String(settings.defaultDist||10) : "";
     document.getElementById("yl").value = (mode==="7v7") ? 40 : "";
     applyMode();
     save(); render();
@@ -1104,7 +1379,17 @@
     document.getElementById("opp").value=""; document.getElementById("gdate").value="";
     save(); render();
   }
+  function refreshModeModal(){
+    [].forEach.call(document.querySelectorAll(".mode-pick"), function(b){
+      var mode = b.getAttribute("data-mode");
+      var label = b.querySelector("b");
+      if(!label) return;
+      var base = mode==="standard"?"Standard game":(mode==="7v7"?"7v7 game":"Scrimmage");
+      label.textContent = base + (mode===settings.defaultMode ? " ★ Default" : "");
+    });
+  }
   document.getElementById("resetBtn").addEventListener("click", function(){
+    refreshModeModal();
     document.getElementById("modeModal").hidden = false;
   });
   document.getElementById("endGameBtn").addEventListener("click", function(){
@@ -1119,6 +1404,54 @@
   });
   document.getElementById("endGameModal").addEventListener("click", function(e){
     if(e.target === this) this.hidden = true;
+  });
+
+  // ---- settings panel ----
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("settingsBack").addEventListener("click", closeSettings);
+  document.getElementById("colorGrid").addEventListener("click", function(e){
+    var btn = e.target.closest(".color-swatch"); if(!btn) return;
+    var c = COLOR_PALETTE[Number(btn.getAttribute("data-idx"))]; if(!c) return;
+    settings.teamColor = c.color; settings.teamAccent = c.accent; settings.teamTextColor = c.text;
+    renderSettingsPanel();
+  });
+  document.getElementById("stMode").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    [].forEach.call(this.children, function(c){ c.classList.remove("on"); });
+    b.classList.add("on"); settings.defaultMode = b.getAttribute("data-v");
+  });
+  document.getElementById("stTagList").addEventListener("click", function(e){
+    var del = e.target.closest(".st-tag-del"); if(!del) return;
+    var i = Number(del.getAttribute("data-del"));
+    if(settings.tags.length <= 1){ alert("You need at least one tag."); return; }
+    settings.tags.splice(i, 1); renderSettingsTags();
+  });
+  document.getElementById("stAddTag").addEventListener("click", function(){
+    var inp = document.getElementById("stNewTag");
+    var val = inp.value.trim(); if(!val) return;
+    if(settings.tags.indexOf(val) < 0) settings.tags.push(val);
+    inp.value = ""; renderSettingsTags();
+  });
+  document.getElementById("stNewTag").addEventListener("keydown", function(e){
+    if(e.key === "Enter") document.getElementById("stAddTag").click();
+  });
+  document.getElementById("stClearLib").addEventListener("click", function(){
+    if(!confirm("Clear all saved autocomplete entries (formations, plays, fronts, coverages)? This can’t be undone.")) return;
+    suggest.forms=[]; suggest.calls=[]; suggest.motions=[]; suggest.fronts=[]; suggest.coverages=[];
+    saveLibrary(); rebuildLists(); renderLibCounts();
+    var btn=this; btn.textContent="✓ Cleared";
+    setTimeout(function(){ btn.textContent="Clear Library"; }, 1800);
+  });
+  document.getElementById("stSave").addEventListener("click", function(){
+    settings.teamName = document.getElementById("stTeamName").value.trim() || "SnapChart";
+    settings.coachName = document.getElementById("stCoachName").value.trim();
+    settings.defaultDist = Math.max(1, parseInt(document.getElementById("stDefaultDist").value,10)||10);
+    settings.effStd1 = Math.max(0, parseInt(document.getElementById("stEff1").value,10)||5);
+    settings.effStd2 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff2").value,10)||50));
+    settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
+    saveSettings(); applySettings();
+    var btn=this; btn.textContent="✓ Saved!";
+    setTimeout(function(){ btn.textContent="Save Settings"; closeSettings(); }, 900);
   });
 
   // ---- notes modal ----
@@ -1167,16 +1500,17 @@
   });
   document.getElementById("printBtn").addEventListener("click", function(){ window.print(); });
   document.getElementById("exportBtn").addEventListener("click", function(){
-    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags"];
+    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes"];
     var lines = [head.join(",")];
     plays.forEach(function(p,i){
-      var row = [i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",p.tags.join(" | ")];
+      var row = [i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",p.tags.join(" | "),p.note||""];
       lines.push(row.map(function(c){ c=String(c==null?"":c);
         return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
     });
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "bulldogs-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
+    var tname = (settings.teamName||"team").replace(/\s+/g,"_");
+    a.download = tname+"-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
   });
 
   document.getElementById("hudlBtn").addEventListener("click", function(){
@@ -1195,7 +1529,8 @@
     });
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "snapchart-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
+    var tname2 = (settings.teamName||"team").replace(/\s+/g,"_");
+    a.download = tname2+"-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
   });
 
   // ---- Quick Report ----
@@ -1483,6 +1818,7 @@
     }
 
     if(reportMode === "call"){
+      var groups = groupByCall().length;
       sum.innerHTML = groups + " play call" + (groups===1?"":"s") +
         " \u00b7 ranked by success rate \u00b7 <span class=\"backhint\">tap a play call to see its snaps</span>";
       wrap.innerHTML = buildCallTable();
@@ -1813,7 +2149,7 @@
     if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), meta.date||"", plays);
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = "bulldogs-season.csv"; a.click();
+    a.download = (settings.teamName||"team").replace(/\s+/g,"_")+"-season.csv"; a.click();
   }
   document.getElementById("seasonBtn").addEventListener("click", openSeason);
   document.getElementById("seasonBack").addEventListener("click", closeSeason);
@@ -1835,7 +2171,7 @@
   });
 
   // ---- boot ----
-  load().then(function(){ loadLibrary(); rebuildLists(); applyMode(); refreshAutoEff(); render(); });
+  load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); });
 
   // ---- dismiss the startup splash when the user taps Continue ----
   (function(){
