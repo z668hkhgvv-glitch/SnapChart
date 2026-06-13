@@ -317,7 +317,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.9</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.10</span></h1>
         <div class="sub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -583,6 +583,7 @@
 (function(){
   "use strict";
   var KEY = "bulldogs_play_chart_v1";
+  var LIB_KEY = "snapchart_library_v1";
   var plays = [];
   var meta = {opp:"", date:""};
   var suggest = {forms:[], calls:[], motions:[], fronts:[]};
@@ -592,6 +593,26 @@
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
   var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
+
+  // ---- autocomplete library (separate key — never cleared by game resets or season changes) ----
+  function saveLibrary(){
+    try{ localStorage.setItem(LIB_KEY, JSON.stringify({
+      forms: suggest.forms||[], calls: suggest.calls||[], motions: suggest.motions||[],
+      fronts: suggest.fronts||[], coverages: suggest.coverages||[]
+    })); }catch(e){}
+  }
+  function loadLibrary(){
+    try{
+      var raw = localStorage.getItem(LIB_KEY);
+      var lib = raw ? JSON.parse(raw) : {};
+      suggest.forms     = uniqCI((suggest.forms||[]).concat(lib.forms||[]));
+      suggest.calls     = uniqCI((suggest.calls||[]).concat(lib.calls||[]));
+      suggest.motions   = uniqCI((suggest.motions||[]).concat(lib.motions||[]));
+      suggest.fronts    = uniqCI((suggest.fronts||[]).concat(lib.fronts||[]));
+      suggest.coverages = uniqCI((suggest.coverages||[]).concat(lib.coverages||[]));
+      saveLibrary(); // persist the merged result immediately (migrates old data on first run)
+    }catch(e){}
+  }
 
   // ---- storage (localStorage; works offline on the home screen) ----
   function save(){
@@ -723,6 +744,7 @@
     if(motion){ suggest.motions = uniqCI((suggest.motions||[]).concat([motion])); }
     if(front){ suggest.fronts = uniqCI((suggest.fronts||[]).concat([front])); }
     if(coverage){ suggest.coverages = uniqCI((suggest.coverages||[]).concat([coverage])); }
+    saveLibrary();
     rebuildLists();
   }
 
@@ -850,12 +872,7 @@
     draft.note = ""; updateNotesBtn();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
-    if(focus){
-      var el = document.getElementById("form");
-      el.removeAttribute("list");
-      el.focus();
-      setTimeout(function(){ el.setAttribute("list", "forms"); }, 0);
-    }
+    if(focus) document.getElementById("form").focus();
   }
   function addPlay(){
     var dist = document.getElementById("dist").value;
@@ -1818,7 +1835,7 @@
   });
 
   // ---- boot ----
-  load().then(function(){ rebuildLists(); applyMode(); refreshAutoEff(); render(); });
+  load().then(function(){ loadLibrary(); rebuildLists(); applyMode(); refreshAutoEff(); render(); });
 
   // ---- dismiss the startup splash when the user taps Continue ----
   (function(){
