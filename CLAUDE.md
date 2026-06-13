@@ -3,7 +3,7 @@
 SnapChart is a football sideline play-charting app. A coach taps every snap into
 an iPad; the app grades each play, shows live tendencies, suggests calls, and
 exports data. It is a **single-file web app (PWA)** that runs offline once added
-to the home screen. SnapChart is a product of **SidelineLabs**.
+to the home screen. SnapChart is a product of **SidelineLabz**.
 
 ## Where it lives / how it ships
 - GitHub repo: `z668hkhgvv-glitch/SnapChart`
@@ -55,7 +55,7 @@ once. For icons/PDFs, regenerate from the source assets in `/marketing`.
 - Fonts: **Oswald** (display, headers, numbers) + **Inter** (body), via Google
   Fonts. CSS var `--num` = Oswald.
 - Logo motif: royal tile, white rising chart bars, green check (SnapChart);
-  white "SL" + green field-line (SidelineLabs). Keep the green as the only
+  white "SL" + green field-line (SidelineLabz). Keep the green as the only
   accent.
 
 ## What the app does (so changes stay consistent)
@@ -78,7 +78,7 @@ once. For icons/PDFs, regenerate from the source assets in `/marketing`.
 - Export CSV (raw) and **Export for Hudl** (one row per play, in order, with a
   Play # column and Hudl breakdown headers, for Import Breakdown Data).
 - Startup splash: animated chart mark + "SnapChart" + "MOVE THE BALL" tagline +
-  Continue button + SidelineLabs logo. Dismisses on Continue (no auto-advance).
+  Continue button + SidelineLabz logo. Dismisses on Continue (no auto-advance).
 
 ## House style
 - Keep code in the single file; don't split into a framework or build system
