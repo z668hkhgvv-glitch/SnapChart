@@ -444,6 +444,7 @@
       <button id="printBtn">Print</button>
       <button id="saveGameBtn" class="primary">&#128190; Save game</button>
       <button id="resetBtn" class="danger">New game</button>
+      <button id="endGameBtn" class="danger" hidden>End Game</button>
     </div>
   </div>
 
@@ -528,6 +529,17 @@
   </header>
   <div class="report-summary" id="seasonSummary"></div>
   <div id="seasonBody"></div>
+</div>
+
+<div class="modal-back" id="endGameModal" hidden>
+  <div class="modal">
+    <h2>End this game?</h2>
+    <p>The current game will be saved to Season history and the chart will be cleared. Tap <b>New game</b> to start the next one.</p>
+    <div class="modal-btns">
+      <button class="primary" id="endGameConfirm">End Game &amp; Save</button>
+    </div>
+    <button class="modal-cancel" id="endGameCancel">Cancel</button>
+  </div>
 </div>
 
 <div class="modal-back" id="modeModal" hidden>
@@ -961,6 +973,7 @@
       b.onclick = function(){ toggleSuccess(b.getAttribute("data-id")); }; });
     [].forEach.call(body.querySelectorAll(".del"), function(b){
       b.onclick = function(){ delPlay(b.getAttribute("data-del")); }; });
+    updateResetBtn();
   }
 
   function avg(arr){ if(!arr.length) return "0.0";
@@ -1017,8 +1030,33 @@
     applyMode();
     save(); render();
   }
+  function updateResetBtn(){
+    var hasPlays = plays.length > 0;
+    document.getElementById("resetBtn").hidden = hasPlays;
+    document.getElementById("endGameBtn").hidden = !hasPlays;
+  }
+  function endCurrentGame(){
+    saveCurrentToSeason();
+    currentGameId = newGameId();
+    plays = []; meta = {opp:"", date:""};
+    document.getElementById("opp").value=""; document.getElementById("gdate").value="";
+    save(); render();
+  }
   document.getElementById("resetBtn").addEventListener("click", function(){
     document.getElementById("modeModal").hidden = false;
+  });
+  document.getElementById("endGameBtn").addEventListener("click", function(){
+    document.getElementById("endGameModal").hidden = false;
+  });
+  document.getElementById("endGameConfirm").addEventListener("click", function(){
+    document.getElementById("endGameModal").hidden = true;
+    endCurrentGame();
+  });
+  document.getElementById("endGameCancel").addEventListener("click", function(){
+    document.getElementById("endGameModal").hidden = true;
+  });
+  document.getElementById("endGameModal").addEventListener("click", function(e){
+    if(e.target === this) this.hidden = true;
   });
   document.getElementById("modeCancel").addEventListener("click", function(){
     document.getElementById("modeModal").hidden = true;
