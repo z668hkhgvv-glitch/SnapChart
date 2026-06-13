@@ -687,6 +687,7 @@
     if(motion){ suggest.motions = uniqCI((suggest.motions||[]).concat([motion])); }
     if(front){ suggest.fronts = uniqCI((suggest.fronts||[]).concat([front])); }
     if(coverage){ suggest.coverages = uniqCI((suggest.coverages||[]).concat([coverage])); }
+    rebuildLists();
   }
 
   // ---- segmented controls ----
@@ -812,7 +813,7 @@
     draft.yardSign = 1; paintYardSign();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
-    if(focus) document.getElementById("call").focus();
+    if(focus) document.getElementById("form").focus();
   }
   function addPlay(){
     var dist = document.getElementById("dist").value;
