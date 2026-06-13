@@ -79,6 +79,27 @@ SAVING GAMES
 - "Season" shows every saved game, your season-long top plays, and a
   "Download season CSV" button for end-of-year review.
 - "Export CSV" saves just the current game.
+- "Export for Hudl" saves the game in Hudl's breakdown layout (see below).
+
+
+MATCH YOUR DATA TO FILM IN HUDL
+-------------------------------
+The "Export for Hudl" button makes a spreadsheet built the way Hudl's
+play breakdown wants it - one row per play, in order, with a Play #
+column and Hudl-style headers (QTR, ODK, DN, DIST, HASH, YARD LN,
+OFF FORM, PLAY TYPE, PLAY, MOTION, DEF FRONT, COVERAGE, GN/LS, EFF).
+
+To put your charted data on the video:
+1. Upload your game film to Hudl and let it break into one clip per
+   play (Hudl Assist or your staff can do this).
+2. Open that game's playlist in Hudl and choose Import Breakdown Data.
+3. Load the file from "Export for Hudl." Each row drops onto its
+   matching clip, so your calls and results are tied to the film and
+   you can filter the video by them.
+
+One thing to watch: the rows line up by order, so row 1 lands on
+clip 1. If Hudl clipped a play you didn't chart (or the other way
+around), glance down the list once and nudge it back in line.
 
 
 TIPS

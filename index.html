@@ -406,6 +406,7 @@
       <button id="reportBtn" class="primary">&#9776; Quick Report</button>
       <button id="seasonBtn" class="primary">&#128197; Season</button>
       <button id="exportBtn">Export CSV</button>
+      <button id="hudlBtn">Export for Hudl</button>
       <button id="printBtn">Print</button>
       <button id="saveGameBtn" class="primary">&#128190; Save game</button>
       <button id="resetBtn" class="danger">New game</button>
@@ -1005,6 +1006,25 @@
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = "bulldogs-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
+  });
+
+  document.getElementById("hudlBtn").addEventListener("click", function(){
+    // Hudl breakdown layout: one row per clip, in play order. Import via Hudl's
+    // Import Breakdown Data so each row attaches to its matching video clip.
+    var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
+    var lines = [head.join(",")];
+    plays.forEach(function(p,i){
+      var row = [
+        i+1, p.qtr||"", "O", p.down||"", p.dist||"", p.hash||"", p.yl||"",
+        p.form||"", (p.type==="run"?"Run":"Pass"), p.call||"",
+        p.motion||"", p.front||"", p.coverage||"", p.yards, (p.success?"Y":"N")
+      ];
+      lines.push(row.map(function(c){ c=String(c==null?"":c);
+        return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
+    });
+    var blob = new Blob([lines.join("\n")], {type:"text/csv"});
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "snapchart-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
   });
 
   // ---- Quick Report ----
