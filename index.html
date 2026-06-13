@@ -71,7 +71,15 @@
   .entry{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:20px}
   .entry h2{font-family:var(--num);text-transform:uppercase;letter-spacing:.05em;font-size:16px;margin:0 0 12px;color:var(--royal)}
   .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-  .fld{display:flex;flex-direction:column;gap:6px}
+  .fld{display:flex;flex-direction:column;gap:6px;position:relative}
+  .ac-drop{position:absolute;left:0;right:0;top:calc(100% - 2px);
+    background:#fff;border:2px solid var(--royal-2);border-radius:0 0 10px 10px;
+    z-index:20;max-height:220px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+  .ac-opt{padding:11px 14px;font-size:15px;cursor:pointer;color:var(--ink);
+    border-bottom:1px solid var(--chalk)}
+  .ac-opt:last-child{border-bottom:none}
+  .ac-opt:hover,.ac-opt.hi{background:var(--royal-bg);color:var(--royal)}
+  .ac-opt mark{background:none;color:var(--royal-2);font-weight:700;font-style:normal}
   .fld label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
   .seg{display:flex;gap:6px;flex-wrap:wrap}
   .seg button{font-family:var(--num);font-size:18px;font-weight:600;min-width:46px;height:46px;
@@ -416,14 +424,14 @@
         </div>
       </div>
       <div class="fld grow"><label>Formation</label>
-        <input id="form" type="text" list="forms" autocomplete="off" autocapitalize="words"
+        <input id="form" type="text" autocomplete="off" autocapitalize="words"
                placeholder="Start typing &mdash; past entries appear">
-        <datalist id="forms"></datalist>
+        <div class="ac-drop" id="formDrop" hidden></div>
       </div>
       <div class="fld grow"><label>Play call</label>
-        <input id="call" type="text" list="calls" autocomplete="off" autocapitalize="words"
+        <input id="call" type="text" autocomplete="off" autocapitalize="words"
                placeholder="Start typing &mdash; past entries appear">
-        <datalist id="calls"></datalist>
+        <div class="ac-drop" id="callDrop" hidden></div>
       </div>
     </div>
 
@@ -434,22 +442,22 @@
         </button>
       </div>
       <div class="fld grow" id="motionNameWrap" hidden><label>Motion name</label>
-        <input id="motion" type="text" list="motions" autocomplete="off" autocapitalize="words"
+        <input id="motion" type="text" autocomplete="off" autocapitalize="words"
                placeholder="e.g. Jet, Orbit, Z-Out">
-        <datalist id="motions"></datalist>
+        <div class="ac-drop" id="motionDrop" hidden></div>
       </div>
     </div>
 
     <div class="row" id="defRow">
       <div class="fld grow" id="frontFld"><label>Defensive front</label>
-        <input id="front" type="text" list="fronts" autocomplete="off" autocapitalize="words"
+        <input id="front" type="text" autocomplete="off" autocapitalize="words"
                placeholder="Start typing &mdash; past entries appear">
-        <datalist id="fronts"></datalist>
+        <div class="ac-drop" id="frontDrop" hidden></div>
       </div>
       <div class="fld grow" id="coverageFld"><label>Coverage</label>
-        <input id="coverage" type="text" list="coverages" autocomplete="off" autocapitalize="words"
+        <input id="coverage" type="text" autocomplete="off" autocapitalize="words"
                placeholder="Start typing &mdash; past entries appear">
-        <datalist id="coverages"></datalist>
+        <div class="ac-drop" id="coverageDrop" hidden></div>
       </div>
     </div>
 
@@ -898,6 +906,7 @@
     renderLibCounts();
   }
   function openSettings(){
+    closeAllAC();
     document.getElementById("main").hidden = true;
     document.getElementById("settings").hidden = false;
     renderSettingsPanel();
@@ -1017,8 +1026,54 @@
     return out;
   }
   function fillList(id, vals){
-    var dl = document.getElementById(id);
+    var dl = document.getElementById(id); if(!dl) return;
     dl.innerHTML = vals.map(function(v){ return '<option value="'+esc(v)+'"></option>'; }).join("");
+  }
+  function closeAllAC(){
+    ["formDrop","callDrop","motionDrop","frontDrop","coverageDrop"].forEach(function(id){
+      var d = document.getElementById(id); if(d){ d.hidden = true; d.innerHTML = ""; }
+    });
+  }
+  function bindAC(inputId, dropId, getList){
+    var inp = document.getElementById(inputId);
+    var drop = document.getElementById(dropId);
+    if(!inp || !drop) return;
+    function showDrop(){
+      var q = inp.value.trim().toLowerCase();
+      if(!q){ drop.hidden = true; return; }
+      var matches = getList().filter(function(v){ return v && v.toLowerCase().indexOf(q) > -1; });
+      matches.sort(function(a,b){
+        var al=a.toLowerCase(), bl=b.toLowerCase();
+        var as=al.indexOf(q)===0, bs=bl.indexOf(q)===0;
+        if(as&&!bs) return -1; if(!as&&bs) return 1;
+        return al < bl ? -1 : al > bl ? 1 : 0;
+      });
+      matches = matches.slice(0,10);
+      if(!matches.length){ drop.hidden = true; return; }
+      drop.innerHTML = matches.map(function(v){
+        var lo=v.toLowerCase(), idx=lo.indexOf(q);
+        return '<div class="ac-opt" data-v="'+esc(v)+'">'+
+          esc(v.slice(0,idx))+'<mark>'+esc(v.slice(idx,idx+q.length))+'</mark>'+esc(v.slice(idx+q.length))+
+          '</div>';
+      }).join("");
+      drop.hidden = false;
+    }
+    function pick(val){ inp.value = val; drop.hidden = true; drop.innerHTML = ""; }
+    inp.addEventListener("input", showDrop);
+    drop.addEventListener("mousedown", function(e){
+      var o=e.target.closest(".ac-opt"); if(!o) return; e.preventDefault(); pick(o.getAttribute("data-v"));
+    });
+    drop.addEventListener("touchstart", function(e){
+      var o=e.target.closest(".ac-opt"); if(!o) return; e.preventDefault(); pick(o.getAttribute("data-v"));
+    });
+    inp.addEventListener("blur", function(){ setTimeout(function(){ drop.hidden=true; }, 200); });
+    inp.addEventListener("keydown", function(e){
+      if(e.key==="Escape"){ drop.hidden=true; return; }
+      if((e.key==="Enter"||e.key==="Tab")&&!drop.hidden){
+        var first=drop.querySelector(".ac-opt");
+        if(first){ e.preventDefault(); pick(first.getAttribute("data-v")); }
+      }
+    });
   }
   function rebuildLists(){
     if(!suggest.motions) suggest.motions = [];
@@ -1151,6 +1206,7 @@
     });
   }
   function finishEntry(focus){
+    closeAllAC();
     editingId = null;
     document.getElementById("addBtn").textContent = "+ Add Play";
     document.getElementById("cancelEdit").hidden = true;
@@ -1261,7 +1317,9 @@
   }
   document.getElementById("addBtn").addEventListener("click", addPlay);
   document.getElementById("cancelEdit").addEventListener("click", function(){ finishEntry(false); });
-  document.getElementById("call").addEventListener("keydown", function(e){ if(e.key==="Enter") addPlay(); });
+  document.getElementById("call").addEventListener("keydown", function(e){
+    if(e.key==="Enter"){ var d=document.getElementById("callDrop"); if(d&&!d.hidden) return; addPlay(); }
+  });
   document.getElementById("yards").addEventListener("keydown", function(e){ if(e.key==="Enter") addPlay(); });
   document.getElementById("logBody").addEventListener("click", function(e){
     if(e.target.closest(".del") || e.target.closest(".succ")) return;
@@ -2193,6 +2251,13 @@
     var el = document.getElementById(id);
     if(el) el.addEventListener("blur", function(){ el.value = titleCaseWords(el.value); });
   });
+
+  // ---- autocomplete dropdowns ----
+  bindAC("form","formDrop", function(){ return uniqCI(DEFAULT_FORMS.concat(suggest.forms||[], plays.map(function(p){return p.form||"";})));  });
+  bindAC("call","callDrop", function(){ return uniqCI((suggest.calls||[]).concat(plays.map(function(p){return p.call||"";})));  });
+  bindAC("motion","motionDrop", function(){ return uniqCI((suggest.motions||[]).concat(plays.map(function(p){return p.motion||"";})));  });
+  bindAC("front","frontDrop", function(){ return uniqCI((suggest.fronts||[]).concat(plays.map(function(p){return p.front||"";})));  });
+  bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
 
   // ---- boot ----
   load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); });
