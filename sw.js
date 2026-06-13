@@ -1,10 +1,9 @@
 // Service worker — caches the app so it opens with no internet.
-var CACHE = "play-chart-v2";
+var CACHE = "play-chart-v3";
 var FILES = ["./", "index.html", "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", function(e){
   self.skipWaiting();
-  // add each file on its own so one missing file can't break the whole cache
   e.waitUntil(
     caches.open(CACHE).then(function(c){
       return Promise.all(FILES.map(function(f){ return c.add(f).catch(function(){}); }));
@@ -25,19 +24,22 @@ self.addEventListener("fetch", function(e){
   var req = e.request;
   if(req.method !== "GET") return;
 
-  // Any page navigation: serve the cached app shell first (works offline at "/" or "/index.html")
+  // Page navigation: network-FIRST so new versions load when online,
+  // then fall back to the cached app shell when offline.
   if(req.mode === "navigate"){
     e.respondWith(
-      caches.match("index.html").then(function(hit){
-        return hit || caches.match("./").then(function(h2){
-          return h2 || fetch(req).catch(function(){ return caches.match("index.html"); });
-        });
+      fetch(req).then(function(res){
+        var copy = res.clone();
+        caches.open(CACHE).then(function(c){ try{ c.put("index.html", copy); }catch(_){ } });
+        return res;
+      }).catch(function(){
+        return caches.match("index.html").then(function(hit){ return hit || caches.match("./"); });
       })
     );
     return;
   }
 
-  // Everything else: cache-first, then network, caching new GETs as they load
+  // Other assets: cache-first, then network, caching new GETs as they load.
   e.respondWith(
     caches.match(req).then(function(hit){
       return hit || fetch(req).then(function(res){
