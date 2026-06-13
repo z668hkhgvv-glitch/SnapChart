@@ -317,7 +317,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.8</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.9</span></h1>
         <div class="sub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -850,7 +850,12 @@
     draft.note = ""; updateNotesBtn();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
-    if(focus) document.getElementById("form").focus();
+    if(focus){
+      var el = document.getElementById("form");
+      el.removeAttribute("list");
+      el.focus();
+      setTimeout(function(){ el.setAttribute("list", "forms"); }, 0);
+    }
   }
   function addPlay(){
     var dist = document.getElementById("dist").value;
@@ -876,6 +881,8 @@
     }
 
     var isScrim = (currentMode === "scrimmage");
+    var preDown = draft.down;
+    var preDist = parseInt(dist, 10);
     var p = {
       id: Date.now()+"_"+Math.random().toString(36).slice(2,6),
       mode: currentMode,
@@ -893,6 +900,15 @@
       draft.down = String(res.down); setSeg("down", String(res.down));
       document.getElementById("yl").value = res.ball;
       update7v7Hint();
+    } else if(currentMode === "standard" && !isNaN(preDist)){
+      var d = parseInt(preDown, 10);
+      if(yards >= preDist){
+        draft.down = "1"; setSeg("down", "1");
+        document.getElementById("dist").value = 10;
+      } else if(d < 4){
+        draft.down = String(d+1); setSeg("down", String(d+1));
+        document.getElementById("dist").value = Math.max(preDist - yards, 1);
+      }
     } else if(isScrim){
       updateScrimHint();
     }
