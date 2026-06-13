@@ -1584,15 +1584,19 @@
   document.getElementById("exportBtn").addEventListener("click", function(){
     var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes"];
     var lines = [head.join(",")];
-    plays.forEach(function(p,i){
-      var row = [i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",p.tags.join(" | "),p.note||""];
-      lines.push(row.map(function(c){ c=String(c==null?"":c);
-        return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
-    });
+    try {
+      plays.forEach(function(p,i){
+        var row = [i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""];
+        lines.push(row.map(function(c){ c=String(c==null?"":c);
+          return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
+      });
+    } catch(ex) { alert("Export error: "+ex.message); return; }
+    if(lines.length < 2){ alert("No plays to export. Log some snaps first."); return; }
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     var tname = (settings.teamName||"team").replace(/\s+/g,"_");
-    a.download = tname+"-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
+    a.download = tname+"-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
   document.getElementById("hudlBtn").addEventListener("click", function(){
@@ -1600,19 +1604,23 @@
     // Import Breakdown Data so each row attaches to its matching video clip.
     var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
     var lines = [head.join(",")];
-    plays.forEach(function(p,i){
-      var row = [
-        i+1, p.qtr||"", "O", p.down||"", p.dist||"", p.hash||"", p.yl||"",
-        p.form||"", (p.type==="run"?"Run":"Pass"), p.call||"",
-        p.motion||"", p.front||"", p.coverage||"", p.yards, (p.success?"Y":"N")
-      ];
-      lines.push(row.map(function(c){ c=String(c==null?"":c);
-        return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
-    });
+    try {
+      plays.forEach(function(p,i){
+        var row = [
+          i+1, p.qtr||"", "O", p.down||"", p.dist||"", p.hash||"", p.yl||"",
+          p.form||"", (p.type==="run"?"Run":"Pass"), p.call||"",
+          p.motion||"", p.front||"", p.coverage||"", p.yards, (p.success?"Y":"N")
+        ];
+        lines.push(row.map(function(c){ c=String(c==null?"":c);
+          return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
+      });
+    } catch(ex) { alert("Export error: "+ex.message); return; }
+    if(lines.length < 2){ alert("No plays to export. Log some snaps first."); return; }
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     var tname2 = (settings.teamName||"team").replace(/\s+/g,"_");
-    a.download = tname2+"-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv"; a.click();
+    a.download = tname2+"-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
   // ---- Quick Report ----
@@ -2229,9 +2237,11 @@
     }
     games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), gameDateText(g), g.plays||[]); });
     if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), meta.date||"", plays);
+    if(lines.length < 2){ alert("No plays to export. Save a game or log some snaps first."); return; }
     var blob = new Blob([lines.join("\n")], {type:"text/csv"});
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = (settings.teamName||"team").replace(/\s+/g,"_")+"-season.csv"; a.click();
+    a.download = (settings.teamName||"team").replace(/\s+/g,"_")+"-season.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
   document.getElementById("seasonBtn").addEventListener("click", openSeason);
   document.getElementById("seasonBack").addEventListener("click", closeSeason);
