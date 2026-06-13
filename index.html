@@ -57,6 +57,11 @@
   .game-meta input{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:var(--board-fg);
     border-radius:8px;padding:8px 10px;font-family:var(--body);font-size:13px;width:140px;}
   .game-meta input::placeholder{color:var(--board-fg-dim)}
+  .date-wrap{position:relative;display:flex;align-items:center}
+  .date-wrap #gdate{padding-right:32px;width:140px}
+  .cal-btn{position:absolute;right:6px;background:none;border:none;color:var(--board-fg);opacity:.75;
+    font-size:16px;cursor:pointer;padding:0;line-height:1;display:flex;align-items:center}
+  .cal-btn:hover{opacity:1}
   .settings-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:var(--board-fg);
     width:38px;height:38px;border-radius:9px;font-size:20px;cursor:pointer;flex:none;
     display:flex;align-items:center;justify-content:center;line-height:1}
@@ -370,7 +375,11 @@
       </div>
       <div class="game-meta">
         <input id="opp" placeholder="vs Opponent">
-        <input id="gdate" placeholder="Date / Week">
+        <div class="date-wrap">
+          <input id="gdate" placeholder="Date / Week" autocomplete="off">
+          <button id="calBtn" class="cal-btn" type="button" aria-label="Pick date">&#128197;</button>
+          <input type="date" id="gdatePicker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;top:0;left:0">
+        </div>
         <button id="settingsBtn" class="settings-btn" type="button" aria-label="Settings">&#9881;</button>
       </div>
     </div>
@@ -1196,6 +1205,31 @@
     el.addEventListener("input", function(){ meta[k]=el.value; save(); }); }
   bindMeta("opp","opp"); bindMeta("gdate","date");
 
+  // ---- date field: default to today, calendar picker ----
+  function todayStr(){
+    var d = new Date();
+    var mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+    return mo+" "+d.getDate()+", "+d.getFullYear();
+  }
+  function isoToDisplay(iso){ // "2026-06-13" → "Jun 13, 2026"
+    var p = iso.split("-"); if(p.length!==3) return iso;
+    var mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(p[1],10)-1];
+    return mo+" "+parseInt(p[2],10)+", "+p[0];
+  }
+  var gdateEl = document.getElementById("gdate");
+  var pickerEl = document.getElementById("gdatePicker");
+  gdateEl.addEventListener("focus", function(){
+    if(!gdateEl.value){ gdateEl.value = todayStr(); meta.date = gdateEl.value; save(); }
+  });
+  document.getElementById("calBtn").addEventListener("click", function(){
+    pickerEl.showPicker ? pickerEl.showPicker() : pickerEl.click();
+  });
+  pickerEl.addEventListener("change", function(){
+    if(!pickerEl.value) return;
+    gdateEl.value = isoToDisplay(pickerEl.value);
+    meta.date = gdateEl.value; save();
+  });
+
   // ---- add a play ----
   var editingId = null;
 
@@ -1436,8 +1470,9 @@
     saveCurrentToSeason();
     currentGameId = newGameId();
     currentMode = mode;
-    plays = []; meta = {opp:"", date:""};
-    document.getElementById("opp").value=""; document.getElementById("gdate").value="";
+    var today = todayStr();
+    plays = []; meta = {opp:"", date:today};
+    document.getElementById("opp").value=""; document.getElementById("gdate").value=today;
     // reset entry context
     draft.qtr = (mode==="standard") ? "1" : ""; setSeg("qtr", "1");
     draft.down = (mode==="scrimmage") ? "" : "1"; setSeg("down", "1");
