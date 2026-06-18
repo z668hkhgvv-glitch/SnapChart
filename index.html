@@ -374,7 +374,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.17</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.18</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -522,7 +522,7 @@
       <button id="hudlBtn">Export for Hudl</button>
       <button id="printBtn">Print</button>
       <button id="saveGameBtn" class="primary">&#128190; Save game</button>
-      <button id="resetBtn" class="danger">New game</button>
+      <button id="resetBtn" class="danger" hidden>New game</button>
       <button id="endGameBtn" class="danger" hidden>End Game</button>
     </div>
   </div>
@@ -720,6 +720,23 @@
       <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Library</button>
     </div>
 
+    <div class="st-section">
+      <div class="st-h">Backup &amp; Restore</div>
+      <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
+      <div class="st-row" style="margin-bottom:10px">
+        <span class="st-label">Last backup</span>
+        <span id="stLastBackup" style="font-size:13px;color:var(--muted)">Never</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="add" id="stExportBackup" style="flex:1;height:44px;font-size:14px">&#11015; Download Backup</button>
+        <button class="cancel" id="stImportBackup" style="flex:1;height:44px;font-size:14px">&#11014; Restore from File</button>
+      </div>
+      <div id="stRecoverRow" style="margin-top:10px;display:none">
+        <button class="cancel" id="stRecoverPreClear" style="width:100%;height:44px;font-size:14px;color:#b45309;border-color:#b45309">&#8617; Recover Game Before Last New/End Game</button>
+      </div>
+      <input type="file" id="stBackupFile" accept=".json" style="display:none">
+    </div>
+
     <div class="st-section" style="padding:12px 18px">
       <button class="add" id="stSave" style="width:100%">Save Settings</button>
     </div>
@@ -765,6 +782,9 @@
 (function(){
   "use strict";
   var KEY = "bulldogs_play_chart_v1";
+  var BACKUP_KEY = "snapchart_autobak_v1";
+  var PRECLEAR_KEY = "snapchart_preclear_v1";
+  var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
   var settings = {
@@ -924,6 +944,8 @@
     // tags and library
     renderSettingsTags();
     renderLibCounts();
+    updateLastBackupLabel();
+    updateRecoverRow();
   }
   function openSettings(){
     closeAllAC();
@@ -940,18 +962,123 @@
 
   // ---- storage (localStorage; works offline on the home screen) ----
   function save(){
-    try{ localStorage.setItem(KEY, JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode})); }
-    catch(e){ console.warn("save failed", e); }
+    var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode});
+    var saved = false;
+    try{ localStorage.setItem(KEY, blob); saved = true; } catch(e){ /* quota or error */ }
+    // mirror to backup key — failure here is non-fatal
+    try{ localStorage.setItem(BACKUP_KEY, blob); } catch(e){ /* ignore */ }
+    if(!saved){
+      alert("WARNING: Could not save play data.\n\nStorage may be full. Try exporting a backup from Settings > Backup & Restore, then free up space on your iPad.");
+    }
     return Promise.resolve();
   }
   function load(){
+    var loaded = false;
     try{
       var raw = localStorage.getItem(KEY);
-      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; }
-    }catch(e){ /* nothing saved yet */ }
+      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; loaded = true; }
+    }catch(e){ /* will try backup below */ }
+    if(!loaded){
+      // try the automatic backup copy
+      try{
+        var bak = localStorage.getItem(BACKUP_KEY);
+        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard";
+          alert("Your data was recovered from an automatic backup.\n\nPlease export a full backup from Settings > Backup & Restore right away.");
+          localStorage.setItem(KEY, bak); // re-write primary key
+        }
+      }catch(ex){ /* backup also missing or corrupt */ }
+    }
     if(!currentGameId) currentGameId = newGameId();
     if(!suggest.fronts) suggest.fronts = [];
+    if(!suggest.coverages) suggest.coverages = [];
     return Promise.resolve();
+  }
+
+  // ---- backup / restore helpers ----
+  function savePreClearSnapshot(){
+    // called just before starting or ending a game so the play log can be recovered
+    if(!plays.length) return;
+    try{
+      var snap = JSON.stringify({ts:Date.now(), plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode});
+      localStorage.setItem(PRECLEAR_KEY, snap);
+    }catch(e){ /* non-fatal */ }
+  }
+  function exportFullBackup(){
+    var data = {app:"SnapChart", version:"1.0.18", exportedAt:new Date().toLocaleString("en-US"),
+      plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode};
+    var json = JSON.stringify(data, null, 2);
+    try{
+      var blob = new Blob([json], {type:"application/json"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var dateStr = new Date().toISOString().slice(0,10);
+      a.href = url; a.download = "snapchart-backup-"+dateStr+".json";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      localStorage.setItem(EXPORT_TS_KEY, String(Date.now()));
+      updateLastBackupLabel();
+      alert("✓ Backup file downloaded.\n\nSave it to iCloud Drive, email it to yourself, or copy it to Files. You can use it to restore data on any device.");
+    }catch(ex){
+      alert("Export failed: "+ex.message);
+    }
+  }
+  function importFromBackup(jsonText){
+    try{
+      var d = JSON.parse(jsonText);
+      if(d.app !== "SnapChart") throw new Error("Not a SnapChart backup file.");
+      var pCount = (d.plays||[]).length;
+      var gCount = (d.games||[]).length;
+      var when = d.exportedAt||"unknown date";
+      if(!confirm("Restore from backup dated "+when+"?\n\n"+pCount+" current plays, "+gCount+" saved games.\n\nThis will REPLACE all data on this device.")) return;
+      plays = d.plays||[];
+      meta = d.meta||{opp:"",date:""};
+      games = d.games||[];
+      suggest = d.suggest||{forms:[],calls:[],motions:[],fronts:[],coverages:[]};
+      currentGameId = d.currentGameId||newGameId();
+      currentMode = d.currentMode||"standard";
+      save();
+      document.getElementById("settings").hidden = true;
+      document.getElementById("main").hidden = false;
+      applyMode(); rebuildLists(); render();
+      window.scrollTo(0,0);
+      alert("✓ Restored: "+pCount+" plays, "+gCount+" saved games.");
+    }catch(ex){ alert("Restore failed: "+ex.message); }
+  }
+  function recoverPreClear(){
+    try{
+      var raw = localStorage.getItem(PRECLEAR_KEY);
+      if(!raw){ alert("No pre-game snapshot found."); return; }
+      var snap = JSON.parse(raw);
+      var when = snap.ts ? new Date(snap.ts).toLocaleString("en-US") : "unknown time";
+      var pCount = (snap.plays||[]).length;
+      if(!confirm("Recover "+pCount+" plays from before the last New/End Game?\n\nSnapshot saved: "+when+"\n\nThis will replace your current game data.")) return;
+      plays = snap.plays||[];
+      meta = snap.meta||{opp:"",date:""};
+      games = snap.games||[];
+      suggest = snap.suggest||suggest;
+      currentGameId = snap.currentGameId||newGameId();
+      currentMode = snap.currentMode||"standard";
+      save();
+      document.getElementById("settings").hidden = true;
+      document.getElementById("main").hidden = false;
+      applyMode(); rebuildLists(); render();
+      window.scrollTo(0,0);
+      alert("✓ Recovered "+pCount+" plays successfully.");
+    }catch(ex){ alert("Recovery failed: "+ex.message); }
+  }
+  function updateLastBackupLabel(){
+    var el = document.getElementById("stLastBackup"); if(!el) return;
+    var ts = localStorage.getItem(EXPORT_TS_KEY);
+    if(!ts){ el.textContent = "Never — back up now!"; el.style.color = "var(--bad)"; return; }
+    var days = Math.floor((Date.now() - Number(ts)) / 86400000);
+    var d = new Date(Number(ts));
+    var label = days === 0 ? "Today" : days === 1 ? "Yesterday" : days+" days ago";
+    el.textContent = label+" ("+d.toLocaleDateString("en-US")+")";
+    el.style.color = days > 7 ? "var(--bad)" : "var(--muted)";
+  }
+  function updateRecoverRow(){
+    var row = document.getElementById("stRecoverRow"); if(!row) return;
+    row.style.display = localStorage.getItem(PRECLEAR_KEY) ? "" : "none";
   }
 
   // ---- effectiveness rule (smart default for the checkbox) ----
@@ -1574,6 +1701,7 @@
     setTimeout(function(){ btn.innerHTML = saveGameOrig; }, 1600);
   });
   function startNewGame(mode){
+    savePreClearSnapshot();
     saveCurrentToSeason();
     currentGameId = newGameId();
     currentMode = mode;
@@ -1595,6 +1723,7 @@
     document.getElementById("endGameBtn").hidden = !hasPlays;
   }
   function endCurrentGame(){
+    savePreClearSnapshot();
     saveCurrentToSeason();
     currentGameId = newGameId();
     plays = []; meta = {opp:"", date:""};
@@ -1664,6 +1793,18 @@
     var btn=this; btn.textContent="✓ Cleared";
     setTimeout(function(){ btn.textContent="Clear Library"; }, 1800);
   });
+  document.getElementById("stExportBackup").addEventListener("click", exportFullBackup);
+  document.getElementById("stImportBackup").addEventListener("click", function(){
+    document.getElementById("stBackupFile").value = "";
+    document.getElementById("stBackupFile").click();
+  });
+  document.getElementById("stBackupFile").addEventListener("change", function(){
+    var file = this.files && this.files[0]; if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){ importFromBackup(ev.target.result); };
+    reader.readAsText(file);
+  });
+  document.getElementById("stRecoverPreClear").addEventListener("click", recoverPreClear);
   document.getElementById("stSave").addEventListener("click", function(){
     settings.teamName = document.getElementById("stTeamName").value.trim() || "SnapChart";
     settings.coachName = document.getElementById("stCoachName").value.trim();
