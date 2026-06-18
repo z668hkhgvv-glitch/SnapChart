@@ -374,7 +374,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.16</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.17</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1171,9 +1171,13 @@
     document.getElementById("effHint").textContent = "Set by you for this play";
   });
   function refreshAutoEff(){
-    if(draft.effTouched) return; // don't fight a manual choice
-    draft.effective = autoEffective(draft.down, document.getElementById("dist").value, getYards());
+    var hasPenalty = draft.tags.indexOf("Penalty") > -1;
+    if(draft.effTouched && !hasPenalty) return; // respect manual choice unless a penalty overrides
+    draft.effective = hasPenalty ? false : autoEffective(draft.down, document.getElementById("dist").value, getYards());
     paintEff();
+    document.getElementById("effHint").textContent = hasPenalty
+      ? "Penalty — yards don’t count"
+      : "Auto-checked when the play gains enough";
   }
 
   // ---- yards sign toggle (no minus key needed on iPad) ----
@@ -1270,6 +1274,7 @@
     var v = b.getAttribute("data-v"); var i = draft.tags.indexOf(v);
     if(i>-1) draft.tags.splice(i,1); else draft.tags.push(v);
     if(v === "1st Down") draft.fdTouched = true; // remember the coach set this by hand
+    if(v === "Penalty") refreshAutoEff();
   });
 
   // ---- meta inputs ----
