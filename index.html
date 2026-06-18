@@ -317,6 +317,8 @@
   .settings-body{padding:16px 0}
   .st-section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
   .st-h{font-family:var(--num);font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--royal);margin:0 0 12px;font-weight:600}
+  .st-sub-h{font-family:var(--num);font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:14px 0 4px;padding-top:10px;border-top:1px solid var(--chalk)}
+  .st-sub-h:first-of-type{margin-top:0;padding-top:0;border-top:none}
   .st-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--chalk)}
   .st-row:last-child{border-bottom:none}
   .st-label{font-size:14px;font-weight:600;color:var(--ink);flex-shrink:0;min-width:160px}
@@ -378,7 +380,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.1.6</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.1</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -665,8 +667,10 @@
 
     <div class="st-section">
       <div class="st-h">Effective Play Thresholds</div>
+
+      <div class="st-sub-h">Standard</div>
       <div class="st-row">
-        <span class="st-label">Standard &mdash; 1st down</span>
+        <span class="st-label">1st down</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
           <input id="stEff1" class="st-input st-num" type="number" value="5" min="0" max="30">
@@ -674,7 +678,7 @@
         </div>
       </div>
       <div class="st-row">
-        <span class="st-label">Standard &mdash; 2nd down</span>
+        <span class="st-label">2nd down</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
           <input id="stEff2" class="st-input st-num" type="number" value="50" min="0" max="100">
@@ -682,7 +686,7 @@
         </div>
       </div>
       <div class="st-row">
-        <span class="st-label">Standard &mdash; 3rd down</span>
+        <span class="st-label">3rd down</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
           <input id="stEff3" class="st-input st-num" type="number" value="100" min="0" max="100">
@@ -690,15 +694,30 @@
         </div>
       </div>
       <div class="st-row">
-        <span class="st-label">Standard &mdash; 4th down</span>
+        <span class="st-label">4th down</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
           <input id="stEff4" class="st-input st-num" type="number" value="100" min="0" max="100">
           <span style="font-size:13px;color:var(--muted)">% of to-go</span>
         </div>
       </div>
+
+      <div class="st-sub-h">7v7</div>
       <div class="st-row">
-        <span class="st-label">Scrimmage</span>
+        <span class="st-label">Plays per series</span>
+        <input id="stEff7v7Plays" class="st-input st-num" type="number" value="4" min="1" max="10">
+      </div>
+      <div class="st-row">
+        <span class="st-label">Count as effective when</span>
+        <div class="seg" id="stEff7v7Mode">
+          <button data-v="pace" class="on">On pace</button>
+          <button data-v="strict">Must convert</button>
+        </div>
+      </div>
+
+      <div class="st-sub-h">Scrimmage</div>
+      <div class="st-row">
+        <span class="st-label">Minimum yards</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
           <input id="stEffScrim" class="st-input st-num" type="number" value="5" min="0" max="30">
@@ -813,6 +832,7 @@
     teamColor:"#16317F", teamAccent:"#1E44C4", teamTextColor:"white",
     defaultMode:"standard", defaultDist:10,
     effStd1:5, effStd2:50, effStd3:100, effStd4:100, effScrim:5,
+    eff7v7Plays:4, eff7v7Mode:"pace",
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
   };
   var COLOR_PALETTE = [
@@ -884,6 +904,8 @@
       if(d.effStd3 != null) settings.effStd3 = Number(d.effStd3)||100;
       if(d.effStd4 != null) settings.effStd4 = Number(d.effStd4)||100;
       if(d.effScrim != null) settings.effScrim = Number(d.effScrim)||5;
+      if(d.eff7v7Plays != null) settings.eff7v7Plays = Math.max(1, Math.min(10, Number(d.eff7v7Plays)||4));
+      if(d.eff7v7Mode) settings.eff7v7Mode = d.eff7v7Mode;
       if(d.tags && d.tags.length) settings.tags = d.tags;
     }catch(e){}
   }
@@ -978,6 +1000,9 @@
     document.getElementById("stEff3").value = settings.effStd3;
     document.getElementById("stEff4").value = settings.effStd4;
     document.getElementById("stEffScrim").value = settings.effScrim;
+    document.getElementById("stEff7v7Plays").value = settings.eff7v7Plays||4;
+    var eff7Box = document.getElementById("stEff7v7Mode");
+    [].forEach.call(eff7Box.children, function(b){ b.classList.toggle("on", b.getAttribute("data-v") === (settings.eff7v7Mode||"pace")); });
     // tags and library
     renderSettingsTags();
     renderLibEditor();
@@ -1041,7 +1066,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.1.6", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.1", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1136,10 +1161,12 @@
   }
   function autoEffective7v7(down, toGo, yards){
     toGo = Number(toGo)||0; yards = Number(yards)||0; down = Number(down)||1;
-    if(toGo <= 0) return yards >= 0;                 // already at the line
-    if(yards >= toGo) return true;                   // reached the target (first down / score)
-    var remaining = Math.max(1, 5 - down);           // plays left in this 4-play series (incl. this one)
-    return yards >= (toGo / remaining);              // stayed on pace; on 4th down this means must convert
+    if(toGo <= 0) return yards >= 0;
+    if(yards >= toGo) return true;
+    if(settings.eff7v7Mode === "strict") return false;
+    var playsPerSeries = settings.eff7v7Plays || 4;
+    var remaining = Math.max(1, playsPerSeries - down + 1);
+    return yards >= (toGo / remaining);
   }
   function target7v7(ballOn){
     ballOn = Number(ballOn);
@@ -1160,7 +1187,7 @@
     var t = target7v7(ballOn);
     var toGo = Number(ballOn) - t;
     document.getElementById("dist").value = toGo;     // store yards-to-line as the play's distance
-    hint.innerHTML = "Play <b>"+esc(draft.down)+" of 4</b> \u00b7 reach <b>"+targetLabel(t)+"</b> \u00b7 <b>"+toGo+"</b> to go";
+    hint.innerHTML = "Play <b>"+esc(draft.down)+" of "+(settings.eff7v7Plays||4)+"</b> \u00b7 reach <b>"+targetLabel(t)+"</b> \u00b7 <b>"+toGo+"</b> to go";
     refreshAutoEff();
   }
   function updateScrimHint(){
@@ -1807,6 +1834,11 @@
     [].forEach.call(this.children, function(c){ c.classList.remove("on"); });
     b.classList.add("on"); settings.defaultMode = b.getAttribute("data-v");
   });
+  document.getElementById("stEff7v7Mode").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    [].forEach.call(this.children, function(c){ c.classList.remove("on"); });
+    b.classList.add("on"); settings.eff7v7Mode = b.getAttribute("data-v");
+  });
   document.getElementById("stTagList").addEventListener("click", function(e){
     var del = e.target.closest(".st-tag-del"); if(!del) return;
     var i = Number(del.getAttribute("data-del"));
@@ -1881,6 +1913,7 @@
     settings.effStd3 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff3").value,10)||100));
     settings.effStd4 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff4").value,10)||100));
     settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
+    settings.eff7v7Plays = Math.max(1, Math.min(10, parseInt(document.getElementById("stEff7v7Plays").value,10)||4));
     saveSettings(); applySettings();
     var btn=this; btn.textContent="✓ Saved!";
     setTimeout(function(){ btn.textContent="Save Settings"; closeSettings(); }, 900);
