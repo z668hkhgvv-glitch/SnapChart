@@ -380,7 +380,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.2.1</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.2</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -824,6 +824,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
+  var SW_CACHE_KEY = "play-chart-v33";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1066,7 +1067,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.2.1", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.2", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1919,31 +1920,32 @@
     setTimeout(function(){ btn.textContent="Save Settings"; closeSettings(); }, 900);
   });
   document.getElementById("stUpdateBtn").addEventListener("click", function(){
-    if(!("serviceWorker" in navigator)){ alert("Service worker not supported in this browser."); return; }
     var btn = this;
     btn.textContent = "Checking…"; btn.disabled = true;
-    var reloading = false;
-    navigator.serviceWorker.addEventListener("controllerchange", function(){
-      if(reloading) return; reloading = true; window.location.reload();
-    });
-    navigator.serviceWorker.getRegistration().then(function(reg){
-      if(!reg){
-        btn.textContent = "Check for Update"; btn.disabled = false;
-        alert("No service worker found. Visit the live URL online to install the app first.");
-        return;
-      }
-      reg.update().then(function(){
-        setTimeout(function(){
-          if(!reloading){
-            btn.disabled = false; btn.textContent = "✓ Already up to date";
-            setTimeout(function(){ btn.textContent = "Check for Update"; }, 2500);
-          }
-        }, 2000);
-      }).catch(function(e){
-        btn.textContent = "Check for Update"; btn.disabled = false;
-        alert("Update check failed: "+e.message+"\n\nMake sure you are connected to the internet.");
+    // Fetch sw.js directly, bypassing all caches, then compare versions
+    fetch("sw.js?nc="+Date.now(), {cache:"no-store"})
+      .then(function(r){ return r.text(); })
+      .then(function(text){
+        var m = text.match(/var CACHE = "([^"]+)"/);
+        var remoteKey = m ? m[1] : null;
+        if(!remoteKey || remoteKey === SW_CACHE_KEY){
+          btn.disabled = false; btn.textContent = "✓ Already up to date";
+          setTimeout(function(){ btn.textContent = "Check for Update"; }, 2500);
+          return;
+        }
+        // New version found — trigger SW update then hard-reload
+        btn.textContent = "Update found — reloading…";
+        if("serviceWorker" in navigator){
+          navigator.serviceWorker.getRegistration().then(function(reg){
+            if(reg) reg.update();
+          });
+        }
+        setTimeout(function(){ window.location.reload(true); }, 600);
+      })
+      .catch(function(e){
+        btn.disabled = false; btn.textContent = "Check for Update";
+        alert("Update check failed.\n\nMake sure you are connected to the internet.\n\n"+e.message);
       });
-    });
   });
 
   // ---- notes modal ----
