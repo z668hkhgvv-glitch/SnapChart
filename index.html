@@ -380,7 +380,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.1.4</span></h1>
+        <h1>SnapChart<span class="appversion">1.1.5</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -756,6 +756,12 @@
       <input type="file" id="stBackupFile" accept=".json" style="display:none">
     </div>
 
+    <div class="st-section">
+      <div class="st-h">App Update</div>
+      <p class="st-desc">Check for the latest version. Requires an internet connection. The app will reload automatically if an update is found.</p>
+      <button class="primary" id="stUpdateBtn" style="width:100%;height:44px;font-size:15px">Check for Update</button>
+    </div>
+
     <div class="st-section" style="padding:12px 18px">
       <button class="add" id="stSave" style="width:100%">Save Settings</button>
     </div>
@@ -1039,7 +1045,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.1.4", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.1.5", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1882,6 +1888,33 @@
     saveSettings(); applySettings();
     var btn=this; btn.textContent="✓ Saved!";
     setTimeout(function(){ btn.textContent="Save Settings"; closeSettings(); }, 900);
+  });
+  document.getElementById("stUpdateBtn").addEventListener("click", function(){
+    if(!("serviceWorker" in navigator)){ alert("Service worker not supported in this browser."); return; }
+    var btn = this;
+    btn.textContent = "Checking…"; btn.disabled = true;
+    var reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(reloading) return; reloading = true; window.location.reload();
+    });
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if(!reg){
+        btn.textContent = "Check for Update"; btn.disabled = false;
+        alert("No service worker found. Visit the live URL online to install the app first.");
+        return;
+      }
+      reg.update().then(function(){
+        setTimeout(function(){
+          if(!reloading){
+            btn.disabled = false; btn.textContent = "✓ Already up to date";
+            setTimeout(function(){ btn.textContent = "Check for Update"; }, 2500);
+          }
+        }, 2000);
+      }).catch(function(e){
+        btn.textContent = "Check for Update"; btn.disabled = false;
+        alert("Update check failed: "+e.message+"\n\nMake sure you are connected to the internet.");
+      });
+    });
   });
 
   // ---- notes modal ----
