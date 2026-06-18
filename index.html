@@ -380,7 +380,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.1.3</span></h1>
+        <h1>SnapChart<span class="appversion">1.1.4</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -997,7 +997,7 @@
 
   // ---- storage (localStorage; works offline on the home screen) ----
   function save(){
-    var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode});
+    var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
     var saved = false;
     try{ localStorage.setItem(KEY, blob); saved = true; } catch(e){ /* quota or error */ }
     // mirror to backup key — failure here is non-fatal
@@ -1011,13 +1011,13 @@
     var loaded = false;
     try{
       var raw = localStorage.getItem(KEY);
-      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; loaded = true; }
+      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; if(d.settings) Object.assign(settings, d.settings); loaded = true; }
     }catch(e){ /* will try backup below */ }
     if(!loaded){
       // try the automatic backup copy
       try{
         var bak = localStorage.getItem(BACKUP_KEY);
-        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard";
+        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard"; if(b.settings) Object.assign(settings, b.settings);
           alert("Your data was recovered from an automatic backup.\n\nPlease export a full backup from Settings > Backup & Restore right away.");
           localStorage.setItem(KEY, bak); // re-write primary key
         }
@@ -1034,13 +1034,13 @@
     // called just before starting or ending a game so the play log can be recovered
     if(!plays.length) return;
     try{
-      var snap = JSON.stringify({ts:Date.now(), plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode});
+      var snap = JSON.stringify({ts:Date.now(), plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
       localStorage.setItem(PRECLEAR_KEY, snap);
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.1.3", exportedAt:new Date().toLocaleString("en-US"),
-      plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode};
+    var data = {app:"SnapChart", version:"1.1.4", exportedAt:new Date().toLocaleString("en-US"),
+      plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
       var blob = new Blob([json], {type:"application/json"});
@@ -1071,12 +1071,13 @@
       suggest = d.suggest||{forms:[],calls:[],motions:[],fronts:[],coverages:[]};
       currentGameId = d.currentGameId||newGameId();
       currentMode = d.currentMode||"standard";
-      save();
+      if(d.settings) Object.assign(settings, d.settings);
+      save(); saveSettings(); saveLibrary();
       document.getElementById("settings").hidden = true;
       document.getElementById("main").hidden = false;
-      applyMode(); rebuildLists(); render();
+      applySettings(); applyMode(); rebuildLists(); render();
       window.scrollTo(0,0);
-      alert("✓ Restored: "+pCount+" plays, "+gCount+" saved games.");
+      alert("✓ Restored: "+pCount+" plays, "+gCount+" saved games, team settings, and autocomplete library.");
     }catch(ex){ alert("Restore failed: "+ex.message); }
   }
   function recoverPreClear(){
@@ -1093,10 +1094,11 @@
       suggest = snap.suggest||suggest;
       currentGameId = snap.currentGameId||newGameId();
       currentMode = snap.currentMode||"standard";
-      save();
+      if(snap.settings) Object.assign(settings, snap.settings);
+      save(); saveSettings(); saveLibrary();
       document.getElementById("settings").hidden = true;
       document.getElementById("main").hidden = false;
-      applyMode(); rebuildLists(); render();
+      applySettings(); applyMode(); rebuildLists(); render();
       window.scrollTo(0,0);
       alert("✓ Recovered "+pCount+" plays successfully.");
     }catch(ex){ alert("Recovery failed: "+ex.message); }
