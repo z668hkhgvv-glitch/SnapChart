@@ -345,6 +345,12 @@
     font-size:13px;color:var(--muted);border-top:1px dashed var(--line)}
   .lib-row:first-child{border-top:none}
   .lib-row b{font-family:var(--num);font-weight:700;color:var(--ink)}
+  .lib-edit-btn{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;
+    padding:2px 7px;border-radius:6px;line-height:1}
+  .lib-edit-btn:hover{color:var(--royal);background:rgba(30,68,196,.08)}
+  .lib-cat-pick{width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--chalk);
+    border-radius:8px;font-size:14px;background:var(--white);color:var(--ink);cursor:pointer}
+  .lib-empty{padding:10px 0;color:var(--muted);font-size:14px;font-style:italic}
 </style>
 
 <div id="splash">
@@ -374,7 +380,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.1.1</span></h1>
+        <h1>SnapChart<span class="appversion">1.1.2</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -715,9 +721,20 @@
 
     <div class="st-section">
       <div class="st-h">Autocomplete Library</div>
-      <p class="st-desc">Formation, play call, front, and coverage entries are saved permanently across all games and seasons.</p>
-      <div id="stLibCounts"></div>
-      <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Library</button>
+      <p class="st-desc">Edit saved formations, play calls, motions, fronts, and coverages used for autocomplete suggestions.</p>
+      <select id="libCatPick" class="lib-cat-pick">
+        <option value="forms">Formations</option>
+        <option value="calls">Play Calls</option>
+        <option value="motions">Motions</option>
+        <option value="fronts">Defensive Fronts</option>
+        <option value="coverages">Coverages</option>
+      </select>
+      <div id="stLibList" class="st-tag-list"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="stLibNew" class="st-input" type="text" placeholder="New entry&hellip;" style="flex:1;min-width:0" autocapitalize="words">
+        <button class="add" id="stLibAdd" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
+      </div>
+      <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Entire Library</button>
     </div>
 
     <div class="st-section">
@@ -897,19 +914,35 @@
         '<button class="st-tag-del" data-del="'+i+'" title="Remove">&times;</button></div>';
     }).join("");
   }
-  function renderLibCounts(){
-    var el = document.getElementById("stLibCounts");
-    if(!el) return;
-    var rows = [
-      ["Formations", (suggest.forms||[]).length],
-      ["Play calls", (suggest.calls||[]).length],
-      ["Motions", (suggest.motions||[]).length],
-      ["Fronts", (suggest.fronts||[]).length],
-      ["Coverages", (suggest.coverages||[]).length]
-    ];
-    el.innerHTML = rows.map(function(r){
-      return '<div class="lib-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';
+  var libActiveCat = "forms";
+  var libEditingIdx = -1;
+  function renderLibEditor(){
+    var el = document.getElementById("stLibList"); if(!el) return;
+    var pick = document.getElementById("libCatPick"); if(pick) pick.value = libActiveCat;
+    var arr = suggest[libActiveCat] || [];
+    if(!arr.length){ el.innerHTML = '<div class="lib-empty">No entries yet. Add one below.</div>'; return; }
+    el.innerHTML = arr.map(function(entry, i){
+      if(i === libEditingIdx){
+        return '<div class="st-tag-row">' +
+          '<input class="st-input lib-edit-inp" data-idx="'+i+'" value="'+esc(entry)+'" style="flex:1;min-width:0;height:36px;font-size:14px" autocapitalize="words">' +
+          '<div style="display:flex;gap:6px;margin-left:8px;flex-shrink:0">' +
+            '<button class="add lib-save" data-idx="'+i+'" style="height:36px;padding:0 14px;font-size:13px">Save</button>' +
+            '<button class="cancel lib-cancel" style="height:36px;padding:0 12px;font-size:13px">✕</button>' +
+          '</div></div>';
+      }
+      return '<div class="st-tag-row"><span>'+esc(entry)+'</span>' +
+        '<div style="display:flex;gap:2px;flex-shrink:0">' +
+          '<button class="lib-edit-btn lib-edit" data-edit="'+i+'" title="Edit">✎</button>' +
+          '<button class="st-tag-del lib-del" data-del="'+i+'" title="Delete">&times;</button>' +
+        '</div></div>';
     }).join("");
+  }
+  function libAddNew(){
+    var inp = document.getElementById("stLibNew");
+    var val = titleCaseWords(inp.value.trim()); if(!val) return;
+    var arr = suggest[libActiveCat] || [];
+    if(arr.map(function(s){ return s.toLowerCase(); }).indexOf(val.toLowerCase()) < 0){ arr.push(val); suggest[libActiveCat] = arr; }
+    inp.value = ""; saveLibrary(); rebuildLists(); renderLibEditor();
   }
   function renderSettingsPanel(){
     document.getElementById("stTeamName").value = settings.teamName||"";
@@ -943,7 +976,7 @@
     document.getElementById("stEffScrim").value = settings.effScrim;
     // tags and library
     renderSettingsTags();
-    renderLibCounts();
+    renderLibEditor();
     updateLastBackupLabel();
     updateRecoverRow();
   }
@@ -1004,7 +1037,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.1.1", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.1.2", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1786,12 +1819,43 @@
   document.getElementById("stNewTag").addEventListener("keydown", function(e){
     if(e.key === "Enter") document.getElementById("stAddTag").click();
   });
+  document.getElementById("libCatPick").addEventListener("change", function(){
+    libActiveCat = this.value; libEditingIdx = -1; renderLibEditor();
+  });
+  document.getElementById("stLibList").addEventListener("click", function(e){
+    var del = e.target.closest(".lib-del");
+    if(del){
+      var i = Number(del.getAttribute("data-del"));
+      var arr = suggest[libActiveCat];
+      if(!confirm("Delete \""+arr[i]+"\"?")) return;
+      arr.splice(i,1); libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
+    }
+    var edit = e.target.closest(".lib-edit");
+    if(edit){ libEditingIdx=Number(edit.getAttribute("data-edit")); renderLibEditor(); return; }
+    var save = e.target.closest(".lib-save");
+    if(save){
+      var idx = Number(save.getAttribute("data-idx"));
+      var inp = this.querySelector(".lib-edit-inp");
+      var val = titleCaseWords((inp ? inp.value : "").trim());
+      if(val) suggest[libActiveCat][idx] = val;
+      libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
+    }
+    if(e.target.closest(".lib-cancel")){ libEditingIdx=-1; renderLibEditor(); return; }
+  });
+  document.getElementById("stLibList").addEventListener("keydown", function(e){
+    if(e.key !== "Enter") return;
+    var save = this.querySelector(".lib-save"); if(save) save.click();
+  });
+  document.getElementById("stLibAdd").addEventListener("click", libAddNew);
+  document.getElementById("stLibNew").addEventListener("keydown", function(e){
+    if(e.key === "Enter") libAddNew();
+  });
   document.getElementById("stClearLib").addEventListener("click", function(){
-    if(!confirm("Clear all saved autocomplete entries (formations, plays, fronts, coverages)? This can’t be undone.")) return;
+    if(!confirm("Clear ALL autocomplete entries across all categories? This can’t be undone.")) return;
     suggest.forms=[]; suggest.calls=[]; suggest.motions=[]; suggest.fronts=[]; suggest.coverages=[];
-    saveLibrary(); rebuildLists(); renderLibCounts();
+    saveLibrary(); rebuildLists(); renderLibEditor();
     var btn=this; btn.textContent="✓ Cleared";
-    setTimeout(function(){ btn.textContent="Clear Library"; }, 1800);
+    setTimeout(function(){ btn.textContent="Clear Entire Library"; }, 1800);
   });
   document.getElementById("stExportBackup").addEventListener("click", exportFullBackup);
   document.getElementById("stImportBackup").addEventListener("click", function(){
