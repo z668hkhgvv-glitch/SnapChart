@@ -124,6 +124,9 @@
   .add{font-family:var(--num);font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
     background:var(--royal-2);color:#fff;border:none;border-radius:12px;height:54px;padding:0 26px;cursor:pointer;flex:1 1 200px;}
   .add:active{background:var(--royal)}
+  .puntbtn{font-family:var(--num);font-size:18px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    background:#92400e;color:#fff;border:none;border-radius:12px;height:54px;padding:0 22px;cursor:pointer;flex:none;}
+  .puntbtn:active{background:#78350f}
   .cancel{flex:0 0 auto;font-family:var(--num);font-size:16px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
     height:54px;padding:0 22px;border-radius:12px;border:2px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;}
   .entry.editing{box-shadow:0 0 0 2px var(--royal-2)}
@@ -186,9 +189,12 @@
   tbody td{padding:10px;border-top:1px solid var(--line);font-size:14px;vertical-align:middle}
   tbody tr.run td:first-child{box-shadow:inset 4px 0 0 var(--royal-2)}
   tbody tr.pass td:first-child{box-shadow:inset 4px 0 0 var(--royal-line)}
+  tbody tr.punt td:first-child{box-shadow:inset 4px 0 0 #b45309}
+  tbody tr.punt{opacity:.75}
   .pill{font-family:var(--num);font-size:13px;font-weight:600;padding:3px 9px;border-radius:6px;display:inline-block}
   .pill.run{background:var(--royal-2);color:#fff}
   .pill.pass{background:#fff;color:var(--royal-2);border:1.5px solid var(--royal-2)}
+  .pill.punt{background:#92400e;color:#fef3c7}
   .res{font-family:var(--num);font-weight:600;font-size:16px}
   .res.up{color:var(--good)} .res.down{color:var(--bad)} .res.flat{color:var(--muted)}
   .succ{cursor:pointer;font-weight:700;font-size:13px;padding:4px 8px;border-radius:6px;border:none}
@@ -368,7 +374,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.14</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.15</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -501,6 +507,7 @@
     </div>
 
     <div class="row"><button class="add" id="addBtn">+ Add Play</button>
+      <button id="puntBtn" class="puntbtn" type="button" hidden>&#8593; Punt</button>
       <button id="notesBtn" class="note-btn" type="button">&#128221; Add Note</button>
       <button class="cancel" id="cancelEdit" type="button" hidden>Cancel</button></div>
   </section>
@@ -1128,7 +1135,30 @@
     });
   }
   wireSeg("qtr","qtr"); wireSeg("hash","hash"); wireSeg("ptype","type");
-  wireSeg("down","down", function(){ refreshAutoEff(); update7v7Hint(); });
+  wireSeg("down","down", function(){ refreshAutoEff(); update7v7Hint(); paintPuntBtn(); });
+
+  // ---- Punt button (4th down, standard mode only) ----
+  function paintPuntBtn(){
+    var btn = document.getElementById("puntBtn");
+    if(!btn) return;
+    btn.hidden = !(currentMode === "standard" && draft.down === "4" && !editingId);
+  }
+  function doPunt(){
+    var p = {
+      id: Date.now()+"_"+Math.random().toString(36).slice(2,6),
+      mode: currentMode,
+      qtr: draft.qtr, down: "4", dist: document.getElementById("dist").value,
+      yl: getYL(), hash: draft.hash, type: "punt",
+      form: "", call: "", motion: "", front: "", coverage: "",
+      yards: 0, tags: [], success: false, auto: true, note: ""
+    };
+    plays.push(p);
+    draft.down = "1"; setSeg("down", "1");
+    document.getElementById("dist").value = settings.defaultDist||10;
+    paintPuntBtn();
+    save(); render();
+  }
+  document.getElementById("puntBtn").addEventListener("click", doPunt);
 
   // ---- Effective Play checkbox ----
   var effBtn = document.getElementById("effBtn");
@@ -1301,6 +1331,7 @@
     draft.note = ""; updateNotesBtn();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
+    paintPuntBtn();
     if(focus) document.getElementById("form").focus();
   }
   function addPlay(){
@@ -1355,6 +1386,7 @@
         draft.down = String(d+1); setSeg("down", String(d+1));
         document.getElementById("dist").value = Math.max(preDist - yards, 1);
       }
+      paintPuntBtn();
     } else if(isScrim){
       updateScrimHint();
     }
@@ -1371,6 +1403,7 @@
     editingId = id;
     draft.qtr=p.qtr; draft.down=p.down; draft.hash=p.hash; draft.type=p.type;
     setSeg("qtr", p.qtr); setSeg("down", p.down); setSeg("hash", p.hash); setSeg("ptype", p.type);
+    paintPuntBtn();
     document.getElementById("dist").value = p.dist;
     var ylNum = Number(p.yl); draft.ylSign = (ylNum < 0) ? -1 : 1; paintYlSign();
     document.getElementById("yl").value = Math.abs(ylNum) || "";
@@ -1408,7 +1441,10 @@
     var ni = e.target.closest(".note-icon");
     if(ni){ openNotesModal(ni.getAttribute("data-note")); return; }
     var tr = e.target.closest("tr[data-id]"); if(!tr) return;
-    startEdit(tr.getAttribute("data-id"));
+    var id = tr.getAttribute("data-id");
+    var p = plays.find(function(x){ return x.id === id; });
+    if(p && p.type === "punt") return; // punt rows are not editable
+    startEdit(id);
   });
 
   function toggleSuccess(id){ var p=plays.find(function(x){return x.id===id;});
@@ -1433,6 +1469,18 @@
       body.innerHTML = '<tr><td colspan="12"><div class="empty"><div class="big">No plays yet</div>Log your first snap above and the chart fills in.</div></td></tr>';
     } else {
       body.innerHTML = plays.map(function(p,i){
+        if(p.type === "punt"){
+          return '<tr class="punt" data-id="'+p.id+'">'+
+            '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
+            '<td>'+esc(p.qtr)+'</td>'+
+            '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
+            '<td>'+(p.yl!==""?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
+            '<td><span class="pill punt">PUNT</span></td>'+
+            '<td colspan="5" style="color:var(--muted);font-style:italic">Change of possession</td>'+
+            '<td></td>'+
+            '<td><button class="del" data-del="'+p.id+'" title="Delete">&times;</button></td>'+
+          '</tr>';
+        }
         var dir = p.yards>0?"up":(p.yards<0?"down":"flat"); var sign = p.yards>0?"+":"";
         var tags = p.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join("");
         return '<tr class="'+p.type+'" data-id="'+p.id+'">'+
@@ -2130,7 +2178,7 @@
   }
   function useSuggestion(s){
     editingId = null;
-    draft.down = s.down; setSeg("down", s.down);
+    draft.down = s.down; setSeg("down", s.down); paintPuntBtn();
     draft.hash = s.hash; setSeg("hash", s.hash);
     draft.type = s.type; setSeg("ptype", s.type);
     document.getElementById("dist").value = s.dist;
