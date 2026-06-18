@@ -374,7 +374,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.0.15</span></h1>
+        <h1>SnapChart<span class="appversion">1.0.16</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1389,6 +1389,12 @@
       paintPuntBtn();
     } else if(isScrim){
       updateScrimHint();
+    }
+    // turnover: override auto-advance and reset to 1st & 10 (possession changed)
+    if(p.tags.indexOf("Turnover") > -1 && currentMode === "standard"){
+      draft.down = "1"; setSeg("down", "1");
+      document.getElementById("dist").value = settings.defaultDist||10;
+      paintPuntBtn();
     }
     // auto-advance ball-on (standard + scrimmage only; 7v7 handled above)
     if(currentMode !== "7v7"){
