@@ -319,6 +319,15 @@
   .st-h{font-family:var(--num);font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--royal);margin:0 0 12px;font-weight:600}
   .st-sub-h{font-family:var(--num);font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:14px 0 4px;padding-top:10px;border-top:1px solid var(--chalk)}
   .st-sub-h:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .opt-card{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border-radius:10px;
+    border:2px solid var(--chalk);cursor:pointer;margin-top:8px;transition:border-color .15s,background .15s}
+  .opt-card.on{border-color:var(--royal-2);background:rgba(30,68,196,.05)}
+  .opt-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--chalk);flex-shrink:0;
+    margin-top:2px;position:relative;transition:border-color .15s}
+  .opt-card.on .opt-radio{border-color:var(--royal-2)}
+  .opt-card.on .opt-radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--royal-2)}
+  .opt-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:3px}
+  .opt-desc{font-size:12px;color:var(--muted);line-height:1.45}
   .st-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--chalk)}
   .st-row:last-child{border-bottom:none}
   .st-label{font-size:14px;font-weight:600;color:var(--ink);flex-shrink:0;min-width:160px}
@@ -380,7 +389,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.2.3</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.4</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -728,11 +737,23 @@
         <span class="st-label">Plays per series</span>
         <input id="stEff7v7Plays" class="st-input st-num" type="number" value="4" min="1" max="10">
       </div>
-      <div class="st-row">
-        <span class="st-label">Effective play when</span>
-        <div class="seg" id="stEff7v7Mode">
-          <button data-v="pace" class="on">Series progress</button>
-          <button data-v="strict">Line crossed only</button>
+      <div style="padding:4px 0 10px;border-bottom:1px solid var(--chalk)">
+        <div class="st-label" style="padding:5px 0 0">Effective play when</div>
+        <div id="stEff7v7Mode">
+          <div class="opt-card on" data-v="pace">
+            <div class="opt-radio"></div>
+            <div>
+              <div class="opt-title">Series progress</div>
+              <div class="opt-desc">Effective if you gained enough yards to stay on track. Each play the benchmark is: gain at least 1/N of the remaining distance, where N = plays left. On the last play you must reach the line.</div>
+            </div>
+          </div>
+          <div class="opt-card" data-v="strict">
+            <div class="opt-radio"></div>
+            <div>
+              <div class="opt-title">Line crossed only</div>
+              <div class="opt-desc">Effective only on the play that actually reaches the target line. All other plays in the series are graded ineffective regardless of yards gained.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -845,7 +866,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v34";
+  var SW_CACHE_KEY = "play-chart-v35";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1031,7 +1052,7 @@
     document.getElementById("stEff7v7Line2").value = settings.eff7v7Line2||5;
     document.getElementById("stEff7v7Plays").value = settings.eff7v7Plays||4;
     var eff7Box = document.getElementById("stEff7v7Mode");
-    [].forEach.call(eff7Box.children, function(b){ b.classList.toggle("on", b.getAttribute("data-v") === (settings.eff7v7Mode||"pace")); });
+    [].forEach.call(eff7Box.querySelectorAll(".opt-card"), function(c){ c.classList.toggle("on", c.getAttribute("data-v") === (settings.eff7v7Mode||"pace")); });
     // tags and library
     renderSettingsTags();
     renderLibEditor();
@@ -1095,7 +1116,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.2.3", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.4", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1870,9 +1891,9 @@
     b.classList.add("on"); settings.defaultMode = b.getAttribute("data-v");
   });
   document.getElementById("stEff7v7Mode").addEventListener("click", function(e){
-    var b = e.target.closest("button"); if(!b) return;
-    [].forEach.call(this.children, function(c){ c.classList.remove("on"); });
-    b.classList.add("on"); settings.eff7v7Mode = b.getAttribute("data-v");
+    var card = e.target.closest(".opt-card"); if(!card) return;
+    [].forEach.call(this.querySelectorAll(".opt-card"), function(c){ c.classList.remove("on"); });
+    card.classList.add("on"); settings.eff7v7Mode = card.getAttribute("data-v");
   });
   document.getElementById("stTagList").addEventListener("click", function(e){
     var del = e.target.closest(".st-tag-del"); if(!del) return;
