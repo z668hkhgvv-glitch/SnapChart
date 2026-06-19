@@ -392,7 +392,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.4</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.5</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -888,7 +888,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v44";
+  var SW_CACHE_KEY = "play-chart-v45";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1140,7 +1140,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.4", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.5", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2017,13 +2017,13 @@
     var del = e.target.closest(".st-tag-del"); if(!del) return;
     var i = Number(del.getAttribute("data-del"));
     if(settings.tags.length <= 1){ alert("You need at least one tag."); return; }
-    settings.tags.splice(i, 1); renderSettingsTags();
+    settings.tags.splice(i, 1); renderSettingsTags(); renderTagChips(); save();
   });
   document.getElementById("stAddTag").addEventListener("click", function(){
     var inp = document.getElementById("stNewTag");
     var val = inp.value.trim(); if(!val) return;
     if(settings.tags.indexOf(val) < 0) settings.tags.push(val);
-    inp.value = ""; renderSettingsTags();
+    inp.value = ""; renderSettingsTags(); renderTagChips(); save();
   });
   document.getElementById("stNewTag").addEventListener("keydown", function(e){
     if(e.key === "Enter") document.getElementById("stAddTag").click();
