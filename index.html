@@ -96,6 +96,9 @@
   input:focus,.seg button:focus-visible,.eff:focus-visible{outline:3px solid var(--royal-line);outline-offset:1px}
   .num-w{width:88px}
   .yards-row{display:flex;gap:8px;align-items:center}
+  .stepper{display:flex;flex-direction:column;gap:3px}
+  .stepbtn{font-size:13px;width:38px;height:21px;border-radius:6px;border:1.5px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0;line-height:1}
+  .stepbtn:active{background:var(--royal-bg);border-color:var(--royal-2)}
   .signbtn{font-family:var(--num);font-size:22px;font-weight:700;width:46px;height:46px;flex:none;
     border:2px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;line-height:1}
   .signbtn.gain{border-color:var(--good);color:var(--good);background:var(--good-bg)}
@@ -389,7 +392,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.3</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.4</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -500,6 +503,10 @@
         <div class="yards-row">
           <button id="yardSignBtn" class="signbtn gain" type="button" aria-label="Gain or loss">+</button>
           <input id="yards" class="num-w" type="number" inputmode="numeric" placeholder="0" min="0">
+          <div class="stepper">
+            <button id="yardsUp" class="stepbtn" type="button" aria-label="Add 1 yard">▲</button>
+            <button id="yardsDown" class="stepbtn" type="button" aria-label="Remove 1 yard">▼</button>
+          </div>
         </div>
         <div class="hint" id="yardsHint">Gain &mdash; tap +/&minus; for a loss</div>
       </div>
@@ -881,7 +888,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v43";
+  var SW_CACHE_KEY = "play-chart-v44";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1133,7 +1140,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.3", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.4", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1457,6 +1464,18 @@
   }
   document.getElementById("yardSignBtn").addEventListener("click", function(){
     draft.yardSign = (draft.yardSign < 0) ? 1 : -1;
+    paintYardSign(); onPlayInput();
+  });
+  document.getElementById("yardsUp").addEventListener("click", function(){
+    var next = getYards() + 1;
+    draft.yardSign = next < 0 ? -1 : 1;
+    document.getElementById("yards").value = Math.abs(next);
+    paintYardSign(); onPlayInput();
+  });
+  document.getElementById("yardsDown").addEventListener("click", function(){
+    var next = getYards() - 1;
+    draft.yardSign = next < 0 ? -1 : 1;
+    document.getElementById("yards").value = Math.abs(next);
     paintYardSign(); onPlayInput();
   });
 
