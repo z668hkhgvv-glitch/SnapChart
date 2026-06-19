@@ -389,7 +389,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.2.5</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.6</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -870,7 +870,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v36";
+  var SW_CACHE_KEY = "play-chart-v37";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1122,7 +1122,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.2.5", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.6", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1527,6 +1527,19 @@
     if(i>-1) draft.tags.splice(i,1); else draft.tags.push(v);
     if(v === "1st Down") draft.fdTouched = true; // remember the coach set this by hand
     if(v === "Penalty") refreshAutoEff();
+    if(v === "TD" && draft.tags.indexOf("TD") > -1){
+      var ylStr = getYL();
+      var ylNum = Number(ylStr);
+      if(!isNaN(ylNum) && ylNum !== 0){
+        var pos = (ylNum <= 0) ? -ylNum : (100 - ylNum);
+        var ydsToEnd = 100 - pos;
+        if(ydsToEnd > 0 && ydsToEnd <= 100){
+          draft.yardSign = 1; paintYardSign();
+          document.getElementById("yards").value = String(ydsToEnd);
+          refreshAutoEff();
+        }
+      }
+    }
   });
 
   // ---- meta inputs ----
