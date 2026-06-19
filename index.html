@@ -95,6 +95,8 @@
     border-radius:10px;padding:11px 12px;height:46px;background:#fff;color:var(--ink);width:100%;}
   input:focus,.seg button:focus-visible,.eff:focus-visible{outline:3px solid var(--royal-line);outline-offset:1px}
   .num-w{width:88px}
+  #dist{width:64px}
+  #yl{width:72px}
   .yards-row{display:flex;gap:8px;align-items:center}
   .stepper{display:flex;flex-direction:column;gap:3px}
   .stepbtn{font-size:13px;width:38px;height:21px;border-radius:6px;border:1.5px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0;line-height:1}
@@ -392,7 +394,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.7</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.8</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -420,7 +422,7 @@
 
   <section class="entry">
     <h2>Log a play</h2>
-    <div class="row">
+    <div class="row" id="topRow" style="flex-wrap:nowrap;align-items:flex-start">
       <div class="fld" id="qtrFld"><label>Quarter</label>
         <div class="seg" id="qtr">
           <button data-v="1" class="on">1</button><button data-v="2">2</button>
@@ -898,7 +900,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v47";
+  var SW_CACHE_KEY = "play-chart-v48";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1150,7 +1152,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.7", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.8", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
