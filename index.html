@@ -389,7 +389,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.2.8</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.9</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -870,7 +870,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v39";
+  var SW_CACHE_KEY = "play-chart-v40";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1122,7 +1122,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.2.8", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.9", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1638,6 +1638,11 @@
       tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note
     };
     if(isScrim){ var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; }
+    // Auto-tag failed 4th-down conversion as Turnover (turnover on downs)
+    if(currentMode === "standard" && parseInt(p.down, 10) === 4 && p.yards < parseInt(p.dist, 10)){
+      if(p.tags.indexOf("Turnover") < 0) p.tags.push("Turnover");
+      p.success = false;
+    }
     plays.push(p);
     learn(form, call, motion, front, coverage);
     finishEntry(true);
