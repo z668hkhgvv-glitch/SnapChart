@@ -392,7 +392,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.5</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.6</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -434,12 +434,22 @@
         </div>
       </div>
       <div class="fld" id="distFld"><label>To go</label>
-        <input id="dist" class="num-w" type="number" inputmode="numeric" value="10" min="0">
+        <div class="yards-row">
+          <input id="dist" class="num-w" type="number" inputmode="numeric" value="10" min="0">
+          <div class="stepper">
+            <button id="distUp" class="stepbtn" type="button" aria-label="Add 1 yard to go">▲</button>
+            <button id="distDown" class="stepbtn" type="button" aria-label="Remove 1 yard to go">▼</button>
+          </div>
+        </div>
       </div>
       <div class="fld"><label>Ball on</label>
         <div class="yards-row">
           <button id="ylSignBtn" class="signbtn loss" type="button" aria-label="Own or opponent side">&#8722;</button>
           <input id="yl" class="num-w" type="number" inputmode="numeric" placeholder="&ndash;" min="1" max="50">
+          <div class="stepper">
+            <button id="ylUp" class="stepbtn" type="button" aria-label="Add 1 yard ball on">▲</button>
+            <button id="ylDown" class="stepbtn" type="button" aria-label="Remove 1 yard ball on">▼</button>
+          </div>
         </div>
         <div class="hint" id="ylHint">Your side &mdash; tap &plusmn; to flip</div>
       </div>
@@ -888,7 +898,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v45";
+  var SW_CACHE_KEY = "play-chart-v46";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1140,7 +1150,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.5", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.6", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1546,8 +1556,28 @@
   }
   function onPlayInput(){ refreshAutoEff(); refreshAutoFirstDown(); }
   document.getElementById("dist").addEventListener("input", onPlayInput);
+  document.getElementById("distUp").addEventListener("click", function(){
+    var el = document.getElementById("dist");
+    el.value = Math.max(0, (parseInt(el.value,10)||0) + 1);
+    onPlayInput();
+  });
+  document.getElementById("distDown").addEventListener("click", function(){
+    var el = document.getElementById("dist");
+    el.value = Math.max(0, (parseInt(el.value,10)||0) - 1);
+    onPlayInput();
+  });
   document.getElementById("yards").addEventListener("input", onPlayInput);
   document.getElementById("yl").addEventListener("input", function(){ update7v7Hint(); });
+  document.getElementById("ylUp").addEventListener("click", function(){
+    var el = document.getElementById("yl");
+    el.value = Math.min(50, (parseInt(el.value,10)||0) + 1);
+    update7v7Hint();
+  });
+  document.getElementById("ylDown").addEventListener("click", function(){
+    var el = document.getElementById("yl");
+    el.value = Math.max(1, (parseInt(el.value,10)||1) - 1);
+    update7v7Hint();
+  });
 
   // ---- result chips ----
   document.getElementById("tags").addEventListener("click", function(e){
