@@ -389,7 +389,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.2</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.3</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -881,7 +881,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v42";
+  var SW_CACHE_KEY = "play-chart-v43";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1133,7 +1133,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.2", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.3", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1613,7 +1613,7 @@
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
     paintPuntBtn();
-    if(focus) document.getElementById("form").focus();
+    if(focus){ window.scrollTo({top:0, behavior:"smooth"}); document.getElementById("form").focus(); }
   }
   function addPlay(){
     var dist = document.getElementById("dist").value;
@@ -2149,6 +2149,7 @@
     draft.down = pd.p.down; setSeg("down", pd.p.down);
     document.getElementById("dist").value = pd.p.dist;
     paintPuntBtn(); save(); render();
+    window.scrollTo({top:0, behavior:"smooth"});
   });
   document.getElementById("penaltyNo").addEventListener("click", function(){
     var pd = penaltyPendingPlay; penaltyPendingPlay = null;
@@ -2166,6 +2167,7 @@
     var adv = advanceBallOn(pd.p.yl, pd.p.yards);
     if(adv){ document.getElementById("yl").value = adv.yl; draft.ylSign = adv.sign; paintYlSign(); }
     paintPuntBtn(); save(); render();
+    window.scrollTo({top:0, behavior:"smooth"});
   });
   document.getElementById("modeCancel").addEventListener("click", function(){
     document.getElementById("modeModal").hidden = true;
