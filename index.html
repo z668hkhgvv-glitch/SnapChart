@@ -395,7 +395,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.9</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.1</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -876,7 +876,7 @@
     <h2>Penalty</h2>
     <p>Will the down be replayed?</p>
     <div class="modal-btns">
-      <button class="mode-pick" id="penaltyYes"><b>Yes — replay the down</b><span>Same down &amp; distance</span></button>
+      <button class="mode-pick" id="penaltyYes"><b>Yes — replay the down</b><span>Same down &middot; distance adjusted for yards</span></button>
       <button class="mode-pick" id="penaltyNo"><b>No — advance normally</b><span>Apply standard yardage rules</span></button>
     </div>
   </div>
@@ -901,7 +901,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v49";
+  var SW_CACHE_KEY = "play-chart-v50";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1153,7 +1153,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.9", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.1", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1781,7 +1781,9 @@
       var hasPenaltyReplay = last.tags && last.tags.indexOf("Penalty") > -1 && last.penaltyReplay === true;
       if(hasPenaltyReplay){
         draft.down = last.down; setSeg("down", last.down);
-        document.getElementById("dist").value = last.dist;
+        document.getElementById("dist").value = Math.max(1, (parseInt(last.dist,10)||0) - (last.yards||0));
+        var advP = advanceBallOn(last.yl, last.yards);
+        if(advP){ document.getElementById("yl").value = advP.yl; draft.ylSign = advP.sign; paintYlSign(); }
       } else {
         if(last.tags && last.tags.indexOf("Turnover") > -1){
           draft.down = "1"; setSeg("down", "1");
@@ -2203,7 +2205,10 @@
     if(!pd) return;
     pd.p.penaltyReplay = true;
     draft.down = pd.p.down; setSeg("down", pd.p.down);
-    document.getElementById("dist").value = pd.p.dist;
+    var newDist = Math.max(1, (parseInt(pd.p.dist, 10)||0) - (pd.p.yards||0));
+    document.getElementById("dist").value = newDist;
+    var adv = advanceBallOn(pd.p.yl, pd.p.yards);
+    if(adv){ document.getElementById("yl").value = adv.yl; draft.ylSign = adv.sign; paintYlSign(); }
     paintPuntBtn(); save(); render();
     window.scrollTo({top:0, behavior:"smooth"});
   });
