@@ -105,6 +105,7 @@
     border:2px solid var(--line);background:#fff;border-radius:10px;cursor:pointer;line-height:1}
   .signbtn.gain{border-color:var(--good);color:var(--good);background:var(--good-bg)}
   .signbtn.loss{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+  .signbtn.mid{border-color:var(--line);color:var(--muted);background:#fff}
   .grow{flex:1 1 200px;min-width:160px}
   .chips{display:flex;gap:6px;flex-wrap:wrap}
   .chip{font-size:12px;font-weight:600;padding:8px 12px;border-radius:999px;border:2px solid var(--line);
@@ -394,7 +395,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.3.8</span></h1>
+        <h1>SnapChart<span class="appversion">1.3.9</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -900,7 +901,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v48";
+  var SW_CACHE_KEY = "play-chart-v49";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1152,7 +1153,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.3.8", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.3.9", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1501,7 +1502,11 @@
     var b = document.getElementById("ylSignBtn");
     var hint = document.getElementById("ylHint");
     if(!b) return;
-    if(draft.ylSign < 0){
+    var atMid = (parseInt(document.getElementById("yl").value, 10) === 50);
+    if(atMid){
+      b.textContent = "50"; b.className = "signbtn mid";
+      if(hint) hint.innerHTML = "Midfield &mdash; tap &plusmn; to flip side";
+    } else if(draft.ylSign < 0){
       b.textContent = "−"; b.className = "signbtn loss";
       if(hint) hint.innerHTML = "Your side &mdash; tap &plusmn; to flip";
     } else {
@@ -1569,7 +1574,7 @@
     onPlayInput();
   });
   document.getElementById("yards").addEventListener("input", onPlayInput);
-  document.getElementById("yl").addEventListener("input", function(){ update7v7Hint(); });
+  document.getElementById("yl").addEventListener("input", function(){ paintYlSign(); update7v7Hint(); });
   function stepYl(delta){
     var v = parseInt(document.getElementById("yl").value, 10) || 1;
     var abs = draft.ylSign < 0 ? v : (100 - v); // absolute pos: own goal=0, opp goal=100
