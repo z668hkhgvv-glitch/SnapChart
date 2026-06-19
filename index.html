@@ -389,7 +389,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.2.7</span></h1>
+        <h1>SnapChart<span class="appversion">1.2.8</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -870,7 +870,7 @@
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
   var PRECLEAR_KEY = "snapchart_preclear_v1";
-  var SW_CACHE_KEY = "play-chart-v38";
+  var SW_CACHE_KEY = "play-chart-v39";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
   var SETTINGS_KEY = "snapchart_settings_v1";
@@ -1122,7 +1122,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.2.7", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.2.8", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1571,7 +1571,6 @@
 
   // ---- add a play ----
   var editingId = null;
-  var preEditState = null; // snapshot of qtr/down/dist/yl before an edit overwrites them
 
   function setSeg(id, value){
     var box = document.getElementById(id);
@@ -1581,6 +1580,7 @@
   }
   function finishEntry(focus){
     closeAllAC();
+    var wasEditing = !!editingId;
     editingId = null;
     document.getElementById("addBtn").textContent = "+ Add Play";
     document.getElementById("cancelEdit").hidden = true;
@@ -1597,14 +1597,7 @@
     draft.motionOn = false; document.getElementById("motion").value = ""; paintMotion();
     draft.yardSign = 1; paintYardSign();
     draft.note = ""; updateNotesBtn();
-    if(preEditState){
-      draft.qtr = preEditState.qtr; setSeg("qtr", preEditState.qtr);
-      draft.down = preEditState.down; setSeg("down", preEditState.down);
-      document.getElementById("dist").value = preEditState.dist;
-      document.getElementById("yl").value = preEditState.yl;
-      draft.ylSign = preEditState.ylSign; paintYlSign();
-      preEditState = null;
-    }
+    if(wasEditing) restoreFromLastPlay();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
     paintPuntBtn();
@@ -1679,15 +1672,49 @@
     }
     save(); render();
   }
+  function restoreFromLastPlay(){
+    var last = plays.length ? plays[plays.length - 1] : null;
+    if(!last){
+      draft.qtr = (currentMode === "standard") ? "1" : ""; setSeg("qtr", draft.qtr);
+      draft.down = (currentMode === "scrimmage") ? "" : "1"; setSeg("down", draft.down);
+      document.getElementById("dist").value = settings.defaultDist || 10;
+      return;
+    }
+    draft.qtr = last.qtr || ""; setSeg("qtr", draft.qtr);
+    if(currentMode === "7v7"){
+      var res = advance7v7(last.yl, last.down, last.yards);
+      draft.down = String(res.down); setSeg("down", String(res.down));
+      document.getElementById("yl").value = res.ball;
+      update7v7Hint();
+    } else if(currentMode === "scrimmage"){
+      draft.down = ""; setSeg("down", "");
+      var advS = advanceBallOn(last.yl, last.yards);
+      if(advS){ document.getElementById("yl").value = advS.yl; draft.ylSign = advS.sign; paintYlSign(); }
+      updateScrimHint();
+    } else {
+      var preDist = parseInt(last.dist, 10);
+      var preDown = parseInt(last.down, 10);
+      var yds = last.yards;
+      if(last.tags && last.tags.indexOf("Turnover") > -1){
+        draft.down = "1"; setSeg("down", "1");
+        document.getElementById("dist").value = settings.defaultDist || 10;
+      } else if(!isNaN(preDist) && !isNaN(preDown)){
+        if(yds >= preDist || preDown >= 4){
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist || 10;
+        } else {
+          draft.down = String(preDown + 1); setSeg("down", String(preDown + 1));
+          document.getElementById("dist").value = Math.max(preDist - yds, 1);
+        }
+      }
+      var advN = advanceBallOn(last.yl, last.yards);
+      if(advN){ document.getElementById("yl").value = advN.yl; draft.ylSign = advN.sign; paintYlSign(); }
+      paintPuntBtn();
+    }
+  }
   function startEdit(id){
     var p = plays.find(function(x){ return x.id === id; });
     if(!p) return;
-    preEditState = {
-      qtr: draft.qtr, down: draft.down,
-      dist: document.getElementById("dist").value,
-      yl: document.getElementById("yl").value,
-      ylSign: draft.ylSign
-    };
     editingId = id;
     draft.qtr=p.qtr; draft.down=p.down; draft.hash=p.hash; draft.type=p.type;
     setSeg("qtr", p.qtr); setSeg("down", p.down); setSeg("hash", p.hash); setSeg("ptype", p.type);
