@@ -320,8 +320,22 @@
 
   /* ---- Settings panel ---- */
   .settings-wrap{max-width:1100px;margin:0 auto;padding:0 14px 60px}
-  .settings-body{padding:16px 0}
+  .settings-layout{display:flex;gap:0;padding:16px 0 0}
+  .stnav{width:210px;flex-shrink:0;border-right:1px solid var(--chalk);padding:4px 12px 4px 0;margin-right:24px}
+  .stnav-item{display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;
+    font-family:var(--body);font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;
+    border-radius:10px;margin-bottom:2px;border-left:3px solid transparent;transition:background .12s,color .12s}
+  .stnav-item:hover{background:rgba(30,68,196,.07);color:var(--royal)}
+  .stnav-item.active{background:#EEF2FF;color:var(--royal);font-weight:700;border-left-color:var(--royal-2)}
+  .stpanel{flex:1;min-width:0;padding-bottom:60px}
+  .st-panel-footer{margin-top:20px;padding-top:16px;border-top:1px solid var(--chalk)}
   .st-section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  @media(max-width:640px){
+    .settings-layout{flex-direction:column}
+    .stnav{width:100%;border-right:none;border-bottom:1px solid var(--chalk);padding:0 0 12px;margin-right:0;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:4px}
+    .stnav-item{width:auto;flex:0 0 auto;border-left:none;border-bottom:3px solid transparent;padding:7px 12px;border-radius:8px}
+    .stnav-item.active{border-left-color:transparent;border-bottom-color:var(--royal-2)}
+  }
   .st-h{font-family:var(--num);font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--royal);margin:0 0 12px;font-weight:600}
   .st-sub-h{font-family:var(--num);font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin:14px 0 4px;padding-top:10px;border-top:1px solid var(--chalk)}
   .st-sub-h:first-of-type{margin-top:0;padding-top:0;border-top:none}
@@ -655,198 +669,220 @@
     </div>
   </header>
 
-  <div class="settings-body">
-    <div class="st-section">
-      <div class="st-h">Team</div>
-      <div class="st-row">
-        <span class="st-label">Team Name</span>
-        <input id="stTeamName" class="st-input wide" type="text" placeholder="e.g. Brandywine Bulldogs">
-      </div>
-      <div class="st-row">
-        <span class="st-label">Coach Name</span>
-        <input id="stCoachName" class="st-input wide" type="text" placeholder="e.g. Coach Smith">
-      </div>
-      <div class="st-row">
-        <span class="st-label">Team Color</span>
-        <div>
-          <div class="color-grid" id="colorGrid"></div>
-          <div class="color-name-label" id="colorNameLabel"></div>
-        </div>
-      </div>
-    </div>
+  <div class="settings-layout">
+    <nav class="stnav" id="stnav">
+      <button class="stnav-item active" data-sec="team">Team</button>
+      <button class="stnav-item" data-sec="defaults">Game Defaults</button>
+      <button class="stnav-item" data-sec="effectiveness">Effectiveness</button>
+      <button class="stnav-item" data-sec="tags">Result Tags</button>
+      <button class="stnav-item" data-sec="library">Library</button>
+      <button class="stnav-item" data-sec="backup">Backup &amp; Restore</button>
+      <button class="stnav-item" data-sec="update">App Update</button>
+    </nav>
 
-    <div class="st-section">
-      <div class="st-h">Game Defaults</div>
-      <div class="st-row">
-        <span class="st-label">Default Mode</span>
-        <div class="seg" id="stMode">
-          <button data-v="standard">Standard</button>
-          <button data-v="7v7">7v7</button>
-          <button data-v="scrimmage">Scrim</button>
-        </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">Default Yards to Go</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input id="stDefaultDist" class="st-input st-num" type="number" value="10" min="1" max="99">
-          <span style="font-size:13px;color:var(--muted)">yards</span>
-        </div>
-      </div>
-    </div>
+    <div class="stpanel">
 
-    <div class="st-section">
-      <div class="st-h">Effective Play Thresholds</div>
-
-      <div class="st-sub-h">Standard</div>
-      <div class="st-row">
-        <span class="st-label">1st down</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
-          <input id="stEff1" class="st-input st-num" type="number" value="5" min="0" max="30">
-          <span style="font-size:13px;color:var(--muted)">yds</span>
+      <div class="st-section" data-panel="team">
+        <div class="st-h">Team</div>
+        <div class="st-row">
+          <span class="st-label">Team Name</span>
+          <input id="stTeamName" class="st-input wide" type="text" placeholder="e.g. Brandywine Bulldogs">
         </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">2nd down</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
-          <input id="stEff2" class="st-input st-num" type="number" value="50" min="0" max="100">
-          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+        <div class="st-row">
+          <span class="st-label">Coach Name</span>
+          <input id="stCoachName" class="st-input wide" type="text" placeholder="e.g. Coach Smith">
         </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">3rd down</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
-          <input id="stEff3" class="st-input st-num" type="number" value="100" min="0" max="100">
-          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
-        </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">4th down</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
-          <input id="stEff4" class="st-input st-num" type="number" value="100" min="0" max="100">
-          <span style="font-size:13px;color:var(--muted)">% of to-go</span>
-        </div>
-      </div>
-
-      <div class="st-sub-h">7v7</div>
-      <div class="st-row">
-        <span class="st-label">Starting position</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input id="stEff7v7Start" class="st-input st-num" type="number" value="40" min="1" max="99">
-          <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
-        </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">First down line 1</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input id="stEff7v7Line1" class="st-input st-num" type="number" value="20" min="1" max="99">
-          <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
-        </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">First down line 2</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input id="stEff7v7Line2" class="st-input st-num" type="number" value="5" min="1" max="99">
-          <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
-        </div>
-      </div>
-      <div class="st-row">
-        <span class="st-label">Plays per series</span>
-        <input id="stEff7v7Plays" class="st-input st-num" type="number" value="4" min="1" max="10">
-      </div>
-      <div style="padding:4px 0 10px;border-bottom:1px solid var(--chalk)">
-        <div class="st-label" style="padding:5px 0 0">Effective play when</div>
-        <div id="stEff7v7Mode">
-          <div class="opt-card on" data-v="pace">
-            <div class="opt-radio"></div>
-            <div>
-              <div class="opt-title">Series progress</div>
-              <div class="opt-desc">Effective if you gained enough yards to stay on track. Each play the benchmark is: gain at least 1/N of the remaining distance, where N = plays left. On the last play you must reach the line.</div>
-            </div>
-          </div>
-          <div class="opt-card" data-v="strict">
-            <div class="opt-radio"></div>
-            <div>
-              <div class="opt-title">Line crossed only</div>
-              <div class="opt-desc">Effective only on the play that actually reaches the target line. All other plays in the series are graded ineffective regardless of yards gained.</div>
-            </div>
+        <div class="st-row">
+          <span class="st-label">Team Color</span>
+          <div>
+            <div class="color-grid" id="colorGrid"></div>
+            <div class="color-name-label" id="colorNameLabel"></div>
           </div>
         </div>
-      </div>
-
-      <div class="st-sub-h">Scrimmage</div>
-      <div class="st-row">
-        <span class="st-label">Plays per series</span>
-        <input id="stEffScrimPlays" class="st-input st-num" type="number" value="10" min="1" max="30">
-      </div>
-      <div class="st-row">
-        <span class="st-label">Minimum yards</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
-          <input id="stEffScrim" class="st-input st-num" type="number" value="5" min="0" max="30">
-          <span style="font-size:13px;color:var(--muted)">yds</span>
+        <div class="st-panel-footer">
+          <button class="add" id="stSave" style="width:100%">Save Settings</button>
         </div>
       </div>
-    </div>
 
-    <div class="st-section">
-      <div class="st-h">Quick Result Tags</div>
-      <p class="st-desc">Tags available in the play entry form. Add custom tags for your playbook.</p>
-      <div class="st-tag-list" id="stTagList"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input id="stNewTag" class="st-input" type="text" placeholder="New tag name&hellip;" style="flex:1;min-width:0">
-        <button class="add" id="stAddTag" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
+      <div class="st-section" data-panel="defaults" hidden>
+        <div class="st-h">Game Defaults</div>
+        <div class="st-row">
+          <span class="st-label">Default Mode</span>
+          <div class="seg" id="stMode">
+            <button data-v="standard">Standard</button>
+            <button data-v="7v7">7v7</button>
+            <button data-v="scrimmage">Scrim</button>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">Default Yards to Go</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="stDefaultDist" class="st-input st-num" type="number" value="10" min="1" max="99">
+            <span style="font-size:13px;color:var(--muted)">yards</span>
+          </div>
+        </div>
+        <div class="st-panel-footer">
+          <button class="add stSaveAlias" style="width:100%">Save Settings</button>
+        </div>
       </div>
-    </div>
 
-    <div class="st-section">
-      <div class="st-h">Autocomplete Library</div>
-      <p class="st-desc">Edit saved formations, play calls, motions, fronts, and coverages used for autocomplete suggestions.</p>
-      <select id="libCatPick" class="lib-cat-pick">
-        <option value="forms">Formations</option>
-        <option value="calls">Play Calls</option>
-        <option value="motions">Motions</option>
-        <option value="fronts">Defensive Fronts</option>
-        <option value="coverages">Coverages</option>
-      </select>
-      <div id="stLibList" class="st-tag-list"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input id="stLibNew" class="st-input" type="text" placeholder="New entry&hellip;" style="flex:1;min-width:0" autocapitalize="words">
-        <button class="add" id="stLibAdd" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
-      </div>
-      <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Entire Library</button>
-    </div>
+      <div class="st-section" data-panel="effectiveness" hidden>
+        <div class="st-h">Effective Play Thresholds</div>
 
-    <div class="st-section">
-      <div class="st-h">Backup &amp; Restore</div>
-      <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
-      <div class="st-row" style="margin-bottom:10px">
-        <span class="st-label">Last backup</span>
-        <span id="stLastBackup" style="font-size:13px;color:var(--muted)">Never</span>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="add" id="stExportBackup" style="flex:1;height:44px;font-size:14px">&#11015; Download Backup</button>
-        <button class="cancel" id="stImportBackup" style="flex:1;height:44px;font-size:14px">&#11014; Restore from File</button>
-      </div>
-      <div id="stRecoverRow" style="margin-top:10px;display:none">
-        <button class="cancel" id="stRecoverPreClear" style="width:100%;height:44px;font-size:14px;color:#b45309;border-color:#b45309">&#8617; Recover Game Before Last New/End Game</button>
-      </div>
-      <input type="file" id="stBackupFile" accept=".json" style="display:none">
-    </div>
+        <div class="st-sub-h">Standard</div>
+        <div class="st-row">
+          <span class="st-label">1st down</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+            <input id="stEff1" class="st-input st-num" type="number" value="5" min="0" max="30">
+            <span style="font-size:13px;color:var(--muted)">yds</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">2nd down</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+            <input id="stEff2" class="st-input st-num" type="number" value="50" min="0" max="100">
+            <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">3rd down</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+            <input id="stEff3" class="st-input st-num" type="number" value="100" min="0" max="100">
+            <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">4th down</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+            <input id="stEff4" class="st-input st-num" type="number" value="100" min="0" max="100">
+            <span style="font-size:13px;color:var(--muted)">% of to-go</span>
+          </div>
+        </div>
 
-    <div class="st-section">
-      <div class="st-h">App Update</div>
-      <p class="st-desc">Check for the latest version. Requires an internet connection. The app will reload automatically if an update is found.</p>
-      <button class="primary" id="stUpdateBtn" style="width:100%;height:44px;font-size:15px">Check for Update</button>
-    </div>
+        <div class="st-sub-h">7v7</div>
+        <div class="st-row">
+          <span class="st-label">Starting position</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input id="stEff7v7Start" class="st-input st-num" type="number" value="40" min="1" max="99">
+            <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">First down line 1</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input id="stEff7v7Line1" class="st-input st-num" type="number" value="20" min="1" max="99">
+            <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">First down line 2</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input id="stEff7v7Line2" class="st-input st-num" type="number" value="5" min="1" max="99">
+            <span style="font-size:13px;color:var(--muted)">yds from end zone</span>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-label">Plays per series</span>
+          <input id="stEff7v7Plays" class="st-input st-num" type="number" value="4" min="1" max="10">
+        </div>
+        <div style="padding:4px 0 10px;border-bottom:1px solid var(--chalk)">
+          <div class="st-label" style="padding:5px 0 0">Effective play when</div>
+          <div id="stEff7v7Mode">
+            <div class="opt-card on" data-v="pace">
+              <div class="opt-radio"></div>
+              <div>
+                <div class="opt-title">Series progress</div>
+                <div class="opt-desc">Effective if you gained enough yards to stay on track. Each play the benchmark is: gain at least 1/N of the remaining distance, where N = plays left. On the last play you must reach the line.</div>
+              </div>
+            </div>
+            <div class="opt-card" data-v="strict">
+              <div class="opt-radio"></div>
+              <div>
+                <div class="opt-title">Line crossed only</div>
+                <div class="opt-desc">Effective only on the play that actually reaches the target line. All other plays in the series are graded ineffective regardless of yards gained.</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <div class="st-section" style="padding:12px 18px">
-      <button class="add" id="stSave" style="width:100%">Save Settings</button>
-    </div>
-  </div>
+        <div class="st-sub-h">Scrimmage</div>
+        <div class="st-row">
+          <span class="st-label">Plays per series</span>
+          <input id="stEffScrimPlays" class="st-input st-num" type="number" value="10" min="1" max="30">
+        </div>
+        <div class="st-row">
+          <span class="st-label">Minimum yards</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">gain &ge;</span>
+            <input id="stEffScrim" class="st-input st-num" type="number" value="5" min="0" max="30">
+            <span style="font-size:13px;color:var(--muted)">yds</span>
+          </div>
+        </div>
+        <div class="st-panel-footer">
+          <button class="add stSaveAlias" style="width:100%">Save Settings</button>
+        </div>
+      </div>
+
+      <div class="st-section" data-panel="tags" hidden>
+        <div class="st-h">Quick Result Tags</div>
+        <p class="st-desc">Tags available in the play entry form. Add custom tags for your playbook.</p>
+        <div class="st-tag-list" id="stTagList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="stNewTag" class="st-input" type="text" placeholder="New tag name&hellip;" style="flex:1;min-width:0">
+          <button class="add" id="stAddTag" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
+        </div>
+        <div class="st-panel-footer">
+          <button class="add stSaveAlias" style="width:100%">Save Settings</button>
+        </div>
+      </div>
+
+      <div class="st-section" data-panel="library" hidden>
+        <div class="st-h">Autocomplete Library</div>
+        <p class="st-desc">Edit saved formations, play calls, motions, fronts, and coverages used for autocomplete suggestions.</p>
+        <select id="libCatPick" class="lib-cat-pick">
+          <option value="forms">Formations</option>
+          <option value="calls">Play Calls</option>
+          <option value="motions">Motions</option>
+          <option value="fronts">Defensive Fronts</option>
+          <option value="coverages">Coverages</option>
+        </select>
+        <div id="stLibList" class="st-tag-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="stLibNew" class="st-input" type="text" placeholder="New entry&hellip;" style="flex:1;min-width:0" autocapitalize="words">
+          <button class="add" id="stLibAdd" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
+        </div>
+        <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Entire Library</button>
+      </div>
+
+      <div class="st-section" data-panel="backup" hidden>
+        <div class="st-h">Backup &amp; Restore</div>
+        <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
+        <div class="st-row" style="margin-bottom:10px">
+          <span class="st-label">Last backup</span>
+          <span id="stLastBackup" style="font-size:13px;color:var(--muted)">Never</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="add" id="stExportBackup" style="flex:1;height:44px;font-size:14px">&#11015; Download Backup</button>
+          <button class="cancel" id="stImportBackup" style="flex:1;height:44px;font-size:14px">&#11014; Restore from File</button>
+        </div>
+        <div id="stRecoverRow" style="margin-top:10px;display:none">
+          <button class="cancel" id="stRecoverPreClear" style="width:100%;height:44px;font-size:14px;color:#b45309;border-color:#b45309">&#8617; Recover Game Before Last New/End Game</button>
+        </div>
+        <input type="file" id="stBackupFile" accept=".json" style="display:none">
+      </div>
+
+      <div class="st-section" data-panel="update" hidden>
+        <div class="st-h">App Update</div>
+        <p class="st-desc">Check for the latest version. Requires an internet connection. The app will reload automatically if an update is found.</p>
+        <button class="primary" id="stUpdateBtn" style="width:100%;height:44px;font-size:15px">Check for Update</button>
+      </div>
+
+    </div><!-- /.stpanel -->
+  </div><!-- /.settings-layout -->
 </div>
 
 <div class="modal-back" id="notesModal" hidden>
@@ -1096,11 +1132,20 @@
     updateLastBackupLabel();
     updateRecoverRow();
   }
+  function switchSettingsSection(sec){
+    [].forEach.call(document.querySelectorAll(".stnav-item"), function(b){
+      b.classList.toggle("active", b.getAttribute("data-sec") === sec);
+    });
+    [].forEach.call(document.querySelectorAll("[data-panel]"), function(p){
+      p.hidden = p.getAttribute("data-panel") !== sec;
+    });
+  }
   function openSettings(){
     closeAllAC();
     document.getElementById("main").hidden = true;
     document.getElementById("settings").hidden = false;
     renderSettingsPanel();
+    switchSettingsSection("team");
     window.scrollTo(0,0);
   }
   function closeSettings(){
@@ -2036,6 +2081,12 @@
   // ---- settings panel ----
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
   document.getElementById("settingsBack").addEventListener("click", closeSettings);
+  [].forEach.call(document.querySelectorAll(".stnav-item"), function(btn){
+    btn.addEventListener("click", function(){ switchSettingsSection(btn.getAttribute("data-sec")); });
+  });
+  [].forEach.call(document.querySelectorAll(".stSaveAlias"), function(btn){
+    btn.addEventListener("click", function(){ document.getElementById("stSave").click(); });
+  });
   document.getElementById("colorGrid").addEventListener("click", function(e){
     var btn = e.target.closest(".color-swatch"); if(!btn) return;
     var c = COLOR_PALETTE[Number(btn.getAttribute("data-idx"))]; if(!c) return;
