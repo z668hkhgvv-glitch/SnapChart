@@ -412,7 +412,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.6</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.7</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -583,7 +583,7 @@
   <div class="table-scroll">
     <table>
       <thead><tr>
-        <th>#</th><th>Qtr</th><th>Dn &amp; Dist</th><th>Ball</th><th>Type</th>
+        <th>#</th><th id="thQtrSer">Qtr</th><th>Dn &amp; Dist</th><th>Ball</th><th>Type</th>
         <th>Formation</th><th>Play call</th><th>Yds</th><th>Effective</th><th>Result</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody id="logBody"></tbody>
@@ -1234,7 +1234,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.6", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.7", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1384,6 +1384,7 @@
     document.getElementById("seriesRow").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series" : "");
+    document.getElementById("thQtrSer").textContent = isScrim ? "Ser" : "Qtr";
     document.getElementById("frontFld").style.display = is7 ? "none" : "";   // 7v7 = coverage only
     var ylSBtn = document.getElementById("ylSignBtn"), ylSHint = document.getElementById("ylHint");
     if(ylSBtn){ ylSBtn.style.display = is7 ? "none" : ""; }
@@ -2013,7 +2014,7 @@
         if(p.type === "punt"){
           return '<tr class="punt" data-id="'+p.id+'">'+
             '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
-            '<td>'+esc(p.qtr)+'</td>'+
+            '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
             '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
             '<td>'+(p.yl!==""?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
             '<td><span class="pill punt">PUNT</span></td>'+
@@ -2026,7 +2027,7 @@
         var tags = p.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join("");
         return '<tr class="'+p.type+'" data-id="'+p.id+'">'+
           '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
-          '<td>'+esc(p.qtr)+'</td>'+
+          '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
           '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
           '<td>'+(p.yl!==""?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
           '<td><span class="pill '+p.type+'">'+(p.type==="run"?"RUN":"PASS")+'</span></td>'+
@@ -2477,7 +2478,7 @@
         '<td><b>'+esc(p.call||"&mdash;")+'</b></td>'+
         '<td>'+esc(p.form||"&mdash;")+'</td>'+
         '<td>'+typePill(p.type)+'</td>'+
-        '<td>'+esc(p.qtr)+'</td>'+
+        '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
         '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
         '<td><span class="res '+dir+'">'+sign+p.yards+'</span></td>'+
         '<td><span class="succ '+(p.success?"y":"n")+'">'+(p.success?"\u2713":"\u2717")+'</span></td>'+
@@ -2582,7 +2583,7 @@
       var tags = p.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join("");
       return '<tr class="'+p.type+'" data-id="'+p.id+'">'+
         '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
-        '<td>'+esc(p.qtr)+'</td>'+
+        '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
         '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
         '<td>'+(p.yl!==""?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
         '<td>'+typePill(p.type)+'</td>'+
@@ -2921,7 +2922,7 @@
       var dir = p.yards>0?"up":(p.yards<0?"down":"flat"); var sign = p.yards>0?"+":"";
       return '<tr class="'+p.type+'">'+
         '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
-        '<td>'+esc(p.qtr)+'</td>'+
+        '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
         '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
         '<td>'+(p.yl!==""&&p.yl!=null?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
         '<td>'+typePill(p.type)+'</td>'+
