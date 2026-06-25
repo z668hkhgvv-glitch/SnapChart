@@ -178,6 +178,9 @@
   .gbtn{font-family:var(--num);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;
     border:1.5px solid var(--line);background:#fff;color:var(--royal);border-radius:9px;height:40px;padding:0 14px;cursor:pointer}
   .gbtn.del{color:var(--bad);border-color:#eecaca}
+  .season-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .stab{font-family:var(--num);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;border:1.5px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;height:34px;padding:0 14px;cursor:pointer;white-space:nowrap}
+  .stab.stab-active{background:var(--royal);color:#fff;border-color:var(--royal)}
   .gcard .gbody{margin-top:12px}
   @media(max-width:820px){.season-cards{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:560px){.gcard .gstats{margin-left:0;width:100%;justify-content:space-between;margin-top:4px}}
@@ -414,7 +417,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.0</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.1</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -954,6 +957,18 @@
   </div>
 </div>
 
+<div class="modal-back" id="archiveModal" hidden>
+  <div class="modal">
+    <h2>Archive Season</h2>
+    <p>Name this season, then start fresh. All saved games move to the archive and you can view them any time from Season Review.</p>
+    <input id="archiveName" type="text" class="field" placeholder="e.g. 2025 Fall Season" maxlength="60" style="width:100%;box-sizing:border-box;margin-bottom:14px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="archiveConfirm" class="add" style="flex:1;min-width:160px">Archive &amp; Start New Season</button>
+      <button id="archiveCancel" class="modal-cancel" style="margin:0;flex:0 0 auto">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-back" id="modeModal" hidden>
   <div class="modal">
     <h2>Start a new game</h2>
@@ -1196,7 +1211,7 @@
 
   // ---- storage (localStorage; works offline on the home screen) ----
   function save(){
-    var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
+    var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, seasons:seasons, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
     var saved = false;
     try{ localStorage.setItem(KEY, blob); saved = true; } catch(e){ /* quota or error */ }
     // mirror to backup key — failure here is non-fatal
@@ -1210,13 +1225,13 @@
     var loaded = false;
     try{
       var raw = localStorage.getItem(KEY);
-      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; if(d.settings) Object.assign(settings, d.settings); loaded = true; }
+      if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; seasons = d.seasons||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; if(d.settings) Object.assign(settings, d.settings); loaded = true; }
     }catch(e){ /* will try backup below */ }
     if(!loaded){
       // try the automatic backup copy
       try{
         var bak = localStorage.getItem(BACKUP_KEY);
-        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard"; if(b.settings) Object.assign(settings, b.settings);
+        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; seasons = b.seasons||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard"; if(b.settings) Object.assign(settings, b.settings);
           alert("Your data was recovered from an automatic backup.\n\nPlease export a full backup from Settings > Backup & Restore right away.");
           localStorage.setItem(KEY, bak); // re-write primary key
         }
@@ -1233,13 +1248,13 @@
     // called just before starting or ending a game so the play log can be recovered
     if(!plays.length) return;
     try{
-      var snap = JSON.stringify({ts:Date.now(), plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
+      var snap = JSON.stringify({ts:Date.now(), plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
       localStorage.setItem(PRECLEAR_KEY, snap);
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.0", exportedAt:new Date().toLocaleString("en-US"),
-      plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
+    var data = {app:"SnapChart", version:"1.5.1", exportedAt:new Date().toLocaleString("en-US"),
+      plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
       var blob = new Blob([json], {type:"application/json"});
@@ -1267,6 +1282,7 @@
       plays = d.plays||[];
       meta = d.meta||{opp:"",date:""};
       games = d.games||[];
+      seasons = d.seasons||[];
       suggest = d.suggest||{forms:[],calls:[],motions:[],fronts:[],coverages:[]};
       currentGameId = d.currentGameId||newGameId();
       currentMode = d.currentMode||"standard";
@@ -2960,11 +2976,17 @@
 
   // ---- Season Review ----
   var seasonExpanded = {};
+  var seasons = [];       // archived past seasons [{id, name, archivedAt, games[]}]
+  var viewingSeason = null; // null = current season, otherwise the archive object
   function fmtDate(ms){ try{ return new Date(ms).toLocaleDateString(); }catch(e){ return ""; } }
   function gameName(g){ return (g.opponent ? ("vs "+g.opponent) : "Untitled game") + (g.mode==="7v7" ? " \u00b7 7v7" : (g.mode==="scrimmage" ? " \u00b7 Scrimmage" : "")); }
   function gameDateText(g){ return g.date || fmtDate(g.savedAt); }
   function allSeasonPlays(){
     var all = [];
+    if(viewingSeason){
+      viewingSeason.games.forEach(function(g){ all = all.concat(g.plays||[]); });
+      return all;
+    }
     games.forEach(function(g){ if(g.id !== currentGameId) all = all.concat(g.plays||[]); });
     all = all.concat(plays);
     return all;
@@ -3045,7 +3067,7 @@
       '<th>Rank</th><th>Play call</th><th>Type</th><th>Times</th><th>Effective</th><th>Success rate</th><th>Avg yds</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
-  function gameCard(item){
+  function gameCard(item, readOnly){
     // item: {id, name, date, plays, isCurrent}
     var list = item.plays || [];
     var n = list.length;
@@ -3053,7 +3075,7 @@
     var rate = n?Math.round(100*eff/n):0;
     var avg = n?(list.reduce(function(a,p){return a+p.yards;},0)/n):0;
     var open = !!seasonExpanded[item.id];
-    var del = item.isCurrent ? "" : '<button class="gbtn del" data-del="'+item.id+'">Delete</button>';
+    var del = (item.isCurrent || readOnly) ? "" : '<button class="gbtn del" data-del="'+item.id+'">Delete</button>';
     return '<div class="gcard">'+
       '<div class="gcard-top">'+
         '<div><div class="gname">'+esc(item.name)+'</div><div class="gdate">'+esc(item.date||"")+'</div></div>'+
@@ -3073,8 +3095,9 @@
   function renderSeason(){
     var sum = document.getElementById("seasonSummary");
     var body = document.getElementById("seasonBody");
-    var savedGames = games.filter(function(g){ return g.id !== currentGameId; });
-    var savedCount = savedGames.length;
+    var isArchive = !!viewingSeason;
+    var activeGames = isArchive ? viewingSeason.games : games.filter(function(g){ return g.id !== currentGameId; });
+    var savedCount = activeGames.length;
     var all = allSeasonPlays();
     var n = all.length;
     var eff = all.filter(function(p){return p.success;}).length;
@@ -3082,21 +3105,41 @@
     var runs = all.filter(function(p){return p.type==="run";}).length;
     var passes = n - runs;
 
-    if(!savedCount && !plays.length){
+    // season tabs \u2014 only shown when at least one archive exists
+    var tabsHtml = "";
+    if(seasons.length){
+      tabsHtml = '<div class="season-tabs">'+
+        '<button class="stab'+(isArchive?"":" stab-active")+'" data-stab="current">Current Season</button>'+
+        seasons.slice().reverse().map(function(s){
+          var active = isArchive && viewingSeason.id === s.id;
+          return '<button class="stab'+(active?" stab-active":"")+'" data-stab="'+s.id+'">'+esc(s.name)+'</button>';
+        }).join("")+
+      '</div>';
+    }
+
+    if(!savedCount && !plays.length && !isArchive){
       sum.innerHTML = "";
-      body.innerHTML = '<div class="none">No games saved yet. Tap <b>Save game</b> to bank this one, or <b>New game</b> to save it and start the next.</div>';
+      body.innerHTML = tabsHtml+'<div class="none">No games saved yet. Tap <b>Save game</b> to bank this one, or <b>New game</b> to save it and start the next.</div>';
       return;
     }
 
-    sum.innerHTML = '<div style="float:right;display:flex;gap:6px;flex-wrap:wrap">'+
-      '<button class="gbtn" data-act="season-csv">Season CSV</button>'+
+    var rightBtns = '<button class="gbtn" data-act="season-csv">Season CSV</button>'+
       '<button class="gbtn" data-act="season-hudl">Season Hudl</button>'+
-      '<button class="gbtn" data-act="print">Print</button>'+
-      '</div>'+
-      savedCount+' saved game'+(savedCount===1?"":"s")+(plays.length?' + 1 in progress':'')+' \u00b7 '+n+' plays \u00b7 '+rate+'% effective overall';
+      '<button class="gbtn" data-act="print">Print</button>';
+    if(isArchive){
+      rightBtns += '<button class="gbtn del" data-act="delete-archive">Delete Archive</button>';
+    } else {
+      rightBtns += '<button class="gbtn" data-act="archive-season">Archive Season</button>';
+    }
+
+    var label = isArchive
+      ? esc(viewingSeason.name)+' \u00b7 archived'
+      : savedCount+' saved game'+(savedCount===1?"":"s")+(plays.length?' + 1 in progress':'');
+    sum.innerHTML = '<div style="float:right;display:flex;gap:6px;flex-wrap:wrap">'+rightBtns+'</div>'+
+      label+' \u00b7 '+n+' play'+(n===1?"":"s")+' \u00b7 '+rate+'% effective overall';
 
     var cards = '<div class="season-cards">'+
-      '<div class="stat"><div class="v">'+(savedCount+(plays.length?1:0))+'</div><div class="k">Games</div></div>'+
+      '<div class="stat"><div class="v">'+(savedCount+(isArchive?0:(plays.length?1:0)))+'</div><div class="k">Games</div></div>'+
       '<div class="stat"><div class="v">'+n+'</div><div class="k">Plays</div></div>'+
       '<div class="stat good"><div class="v">'+rate+'%</div><div class="k">Effective</div></div>'+
       '<div class="stat"><div class="v">'+(n?Math.round(100*runs/n)+"/"+Math.round(100*passes/n):"\u2014")+'</div><div class="k">Run / Pass</div></div>'+
@@ -3106,15 +3149,15 @@
       '<h3 class="down-h">Least effective plays this season<span class="down-h-sub">played 2+ times, ranked lowest success rate first</span></h3>'+seasonLeastCallsTable(all);
 
     var items = [];
-    if(plays.length){
+    if(!isArchive && plays.length){
       items.push({id:"current", name:(meta.opp?("vs "+meta.opp):"Current game")+(currentMode==="7v7"?" \u00b7 7v7":(currentMode==="scrimmage"?" \u00b7 Scrimmage":""))+" (in progress)", date:meta.date||"today", plays:plays, isCurrent:true});
     }
-    savedGames.slice().sort(function(a,b){return (b.savedAt||0)-(a.savedAt||0);}).forEach(function(g){
+    activeGames.slice().sort(function(a,b){return (b.savedAt||0)-(a.savedAt||0);}).forEach(function(g){
       items.push({id:g.id, name:gameName(g), date:gameDateText(g), plays:g.plays||[], isCurrent:false});
     });
-    var gamesHtml = '<h3 class="down-h">Games</h3>' + items.map(gameCard).join("");
+    var gamesHtml = '<h3 class="down-h">Games</h3>' + items.map(function(item){ return gameCard(item, isArchive); }).join("");
 
-    body.innerHTML = cards + topCalls + gamesHtml;
+    body.innerHTML = tabsHtml + cards + topCalls + gamesHtml;
   }
   function openSeason(){
     document.getElementById("main").hidden = true;
@@ -3137,10 +3180,15 @@
         lines.push([label,date,i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""].map(csvEsc).join(","));
       });
     }
-    games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), gameDateText(g), g.plays||[]); });
-    if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), meta.date||"", plays);
+    if(viewingSeason){
+      viewingSeason.games.forEach(function(g){ addRows(gameName(g), gameDateText(g), g.plays||[]); });
+    } else {
+      games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), gameDateText(g), g.plays||[]); });
+      if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), meta.date||"", plays);
+    }
     if(lines.length < 2){ alert("No plays to export. Save a game or log some snaps first."); return; }
-    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-season.csv", lines.join("\n"));
+    var label = viewingSeason ? viewingSeason.name.replace(/[^a-zA-Z0-9_-]/g,"_") : "season";
+    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-"+label+".csv", lines.join("\n"));
   }
   function exportSeasonHudl(){
     var head = ["Game","Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
@@ -3150,10 +3198,27 @@
         lines.push([label,i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
       });
     }
-    games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), g.plays||[]); });
-    if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), plays);
+    if(viewingSeason){
+      viewingSeason.games.forEach(function(g){ addRows(gameName(g), g.plays||[]); });
+    } else {
+      games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), g.plays||[]); });
+      if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), plays);
+    }
     if(lines.length < 2){ alert("No plays to export. Save a game or log some snaps first."); return; }
-    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-season-hudl.csv", lines.join("\n"));
+    var label = viewingSeason ? viewingSeason.name.replace(/[^a-zA-Z0-9_-]/g,"_") : "season";
+    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-"+label+"-hudl.csv", lines.join("\n"));
+  }
+  function archiveSeason(name){
+    var archiveGames = games.filter(function(g){ return g.id !== currentGameId; });
+    if(!archiveGames.length && !plays.length){
+      alert("Nothing to archive — no games have been saved this season.");
+      return false;
+    }
+    seasons.push({id:"season_"+Date.now(), name:name, archivedAt:Date.now(), games:archiveGames});
+    games = games.filter(function(g){ return g.id === currentGameId; }); // keep only in-progress
+    seasonExpanded = {};
+    save();
+    return true;
   }
   document.getElementById("seasonBtn").addEventListener("click", openSeason);
   document.getElementById("seasonBack").addEventListener("click", closeSeason);
@@ -3164,19 +3229,44 @@
       if(a === "season-csv"){ exportSeasonCSV(); return; }
       if(a === "season-hudl"){ exportSeasonHudl(); return; }
       if(a === "print"){ window.print(); return; }
+      if(a === "archive-season"){
+        var yr = new Date().getFullYear();
+        document.getElementById("archiveName").value = yr + " Season";
+        document.getElementById("archiveModal").hidden = false;
+        return;
+      }
+      if(a === "delete-archive"){
+        if(!viewingSeason) return;
+        if(confirm("Delete the \""+viewingSeason.name+"\" archive?\n\nThis permanently removes all "+viewingSeason.games.length+" saved games. This can't be undone.")){
+          seasons = seasons.filter(function(s){ return s.id !== viewingSeason.id; });
+          viewingSeason = null; seasonExpanded = {};
+          save(); renderSeason();
+        }
+        return;
+      }
+    }
+    var tab = e.target.closest("[data-stab]");
+    if(tab){
+      var tid = tab.getAttribute("data-stab");
+      seasonExpanded = {};
+      if(tid === "current"){ viewingSeason = null; }
+      else { viewingSeason = seasons.find(function(s){ return s.id === tid; }) || null; }
+      renderSeason(); return;
     }
     var gc = e.target.closest("[data-gcsv]");
     if(gc){
       var gid = gc.getAttribute("data-gcsv");
-      var glist = gid === "current" ? plays : ((games.find(function(g){return g.id===gid;})||{}).plays||[]);
-      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(games.find(function(g){return g.id===gid;})||{});
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var glist = gid === "current" ? plays : ((pool.find(function(g){return g.id===gid;})||{}).plays||[]);
+      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(pool.find(function(g){return g.id===gid;})||{});
       exportGameCSV(glist, glabel); return;
     }
     var gh = e.target.closest("[data-ghudl]");
     if(gh){
       var gid = gh.getAttribute("data-ghudl");
-      var glist = gid === "current" ? plays : ((games.find(function(g){return g.id===gid;})||{}).plays||[]);
-      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(games.find(function(g){return g.id===gid;})||{});
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var glist = gid === "current" ? plays : ((pool.find(function(g){return g.id===gid;})||{}).plays||[]);
+      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(pool.find(function(g){return g.id===gid;})||{});
       exportGameHudl(glist, glabel); return;
     }
     var v = e.target.closest("[data-view]");
@@ -3186,6 +3276,18 @@
       if(confirm("Delete this saved game? This can't be undone.")){
         games = games.filter(function(g){return g.id!==gid;}); save(); renderSeason();
       } return; }
+  });
+  document.getElementById("archiveConfirm").addEventListener("click", function(){
+    var name = document.getElementById("archiveName").value.trim();
+    if(!name){ alert("Please give this season a name before archiving."); return; }
+    if(archiveSeason(name)){
+      document.getElementById("archiveModal").hidden = true;
+      viewingSeason = null;
+      renderSeason();
+    }
+  });
+  document.getElementById("archiveCancel").addEventListener("click", function(){
+    document.getElementById("archiveModal").hidden = true;
   });
 
   // ---- auto-capitalize words on the text entry fields ----
