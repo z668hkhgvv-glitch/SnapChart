@@ -412,7 +412,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.5</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.6</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -826,6 +826,13 @@
             <span style="font-size:13px;color:var(--muted)">yds</span>
           </div>
         </div>
+        <div class="st-row">
+          <span class="st-label">Ball movement</span>
+          <select id="stScrimmBall" class="st-input">
+            <option value="advance">Advance after each play</option>
+            <option value="fixed">Fixed spot &mdash; reset after each play</option>
+          </select>
+        </div>
         <div class="st-panel-footer">
           <button class="add stSaveAlias" style="width:100%">Save Settings</button>
         </div>
@@ -922,6 +929,28 @@
   </div>
 </div>
 
+<div class="modal-back" id="respotModal" hidden>
+  <div class="modal">
+    <h2>TD &mdash; Re-spot the ball</h2>
+    <p>Where does the next play start?</p>
+    <div class="modal-btns">
+      <button class="mode-pick" id="respotKeep">
+        <b>Keep same spot</b>
+        <span id="respotKeepLabel">Return to starting yard line</span>
+      </button>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--chalk)">
+      <div class="st-label" style="margin-bottom:8px">Or move to a new yard line:</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="respotSignBtn" class="signbtn loss" type="button">&#8722;</button>
+        <input id="respotYl" class="num-w" type="number" inputmode="numeric" placeholder="40" min="1" max="50">
+        <button class="add" id="respotSet" style="min-width:90px">Set spot</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Tap &plusmn; to flip sides (&minus; = your side, + = opponent&rsquo;s)</div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-back" id="modeModal" hidden>
   <div class="modal">
     <h2>Start a new game</h2>
@@ -950,6 +979,7 @@
     teamColor:"#16317F", teamAccent:"#1E44C4", teamTextColor:"white",
     defaultMode:"standard", defaultDist:10,
     effStd1:5, effStd2:50, effStd3:100, effStd4:100, effScrim:5, effScrimPlays:10,
+    scrimmFixed:false,
     eff7v7Plays:4, eff7v7Mode:"pace",
     eff7v7Start:40, eff7v7Line1:20, eff7v7Line2:5,
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
@@ -1024,6 +1054,7 @@
       if(d.effStd4 != null) settings.effStd4 = Number(d.effStd4)||100;
       if(d.effScrim != null) settings.effScrim = Number(d.effScrim)||5;
       if(d.effScrimPlays != null) settings.effScrimPlays = Math.max(1, Math.min(30, Number(d.effScrimPlays)||10));
+      if(d.scrimmFixed != null) settings.scrimmFixed = !!d.scrimmFixed;
       if(d.eff7v7Plays != null) settings.eff7v7Plays = Math.max(1, Math.min(10, Number(d.eff7v7Plays)||4));
       if(d.eff7v7Mode) settings.eff7v7Mode = d.eff7v7Mode;
       if(d.eff7v7Start != null) settings.eff7v7Start = Math.max(1, Math.min(99, Number(d.eff7v7Start)||40));
@@ -1124,6 +1155,7 @@
     document.getElementById("stEff4").value = settings.effStd4;
     document.getElementById("stEffScrimPlays").value = settings.effScrimPlays||10;
     document.getElementById("stEffScrim").value = settings.effScrim;
+    document.getElementById("stScrimmBall").value = settings.scrimmFixed ? "fixed" : "advance";
     document.getElementById("stEff7v7Start").value = settings.eff7v7Start||40;
     document.getElementById("stEff7v7Line1").value = settings.eff7v7Line1||20;
     document.getElementById("stEff7v7Line2").value = settings.eff7v7Line2||5;
@@ -1202,7 +1234,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.5", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.6", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1693,6 +1725,21 @@
   // ---- add a play ----
   var editingId = null;
   var penaltyPendingPlay = null;
+  var respotSign = -1; // ± sign for the re-spot yard line input
+  function paintRespotSign(){
+    var btn = document.getElementById("respotSignBtn");
+    if(!btn) return;
+    btn.textContent = respotSign < 0 ? "−" : "+";
+    btn.className = "signbtn " + (respotSign < 0 ? "loss" : "gain");
+  }
+  function applyRespot(yl, sign){
+    meta.scrimmStartYl   = yl;
+    meta.scrimmStartSign = sign;
+    document.getElementById("respotModal").hidden = true;
+    document.getElementById("yl").value = yl;
+    draft.ylSign = sign; paintYlSign();
+    save();
+  }
 
   function setSeg(id, value){
     var box = document.getElementById(id);
@@ -1777,6 +1824,22 @@
       return;
     }
 
+    // TD or Turnover in scrimmage: ask coach where to re-spot before continuing
+    if(isScrim && (p.tags.indexOf("TD") > -1 || p.tags.indexOf("Turnover") > -1)){
+      finishEntry(false);
+      var _curStart = meta.scrimmStartYl;
+      var _curSign  = meta.scrimmStartSign || -1;
+      var _sideLabel = _curSign < 0 ? "−" : "+";
+      document.getElementById("respotKeepLabel").textContent =
+        _curStart ? ("Keep at " + _sideLabel + _curStart + " yard line") : "Return to starting position";
+      respotSign = _curSign;
+      document.getElementById("respotYl").value = _curStart || "";
+      paintRespotSign();
+      document.getElementById("respotModal").hidden = false;
+      save(); render();
+      return;
+    }
+
     finishEntry(true);
     if(currentMode === "7v7"){
       var res = advance7v7(p.yl, p.down, p.yards);
@@ -1804,8 +1867,21 @@
     }
     // auto-advance ball-on (standard + scrimmage only; 7v7 handled above)
     if(currentMode !== "7v7"){
-      var adv = advanceBallOn(p.yl, p.yards);
-      if(adv){ document.getElementById("yl").value = adv.yl; draft.ylSign = adv.sign; paintYlSign(); }
+      if(isScrim && settings.scrimmFixed){
+        // Fixed spot: capture start on first play of each series, then reset ball
+        if(!meta.scrimmStartYl || p.playNum === 1){
+          var _ylNum = Number(p.yl);
+          meta.scrimmStartYl  = String(Math.abs(_ylNum) || "");
+          meta.scrimmStartSign = _ylNum <= 0 ? -1 : 1;
+        }
+        if(meta.scrimmStartYl){
+          document.getElementById("yl").value = meta.scrimmStartYl;
+          draft.ylSign = meta.scrimmStartSign; paintYlSign();
+        }
+      } else {
+        var adv = advanceBallOn(p.yl, p.yards);
+        if(adv){ document.getElementById("yl").value = adv.yl; draft.ylSign = adv.sign; paintYlSign(); }
+      }
     }
     save(); render();
   }
@@ -1825,8 +1901,13 @@
       update7v7Hint();
     } else if(currentMode === "scrimmage"){
       draft.down = ""; setSeg("down", "");
-      var advS = advanceBallOn(last.yl, last.yards);
-      if(advS){ document.getElementById("yl").value = advS.yl; draft.ylSign = advS.sign; paintYlSign(); }
+      if(settings.scrimmFixed && meta.scrimmStartYl){
+        document.getElementById("yl").value = meta.scrimmStartYl;
+        draft.ylSign = meta.scrimmStartSign || -1; paintYlSign();
+      } else {
+        var advS = advanceBallOn(last.yl, last.yards);
+        if(advS){ document.getElementById("yl").value = advS.yl; draft.ylSign = advS.sign; paintYlSign(); }
+      }
       updateScrimHint();
     } else {
       var preDist = parseInt(last.dist, 10);
@@ -2187,6 +2268,7 @@
     settings.effStd4 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff4").value,10)||100));
     settings.effScrimPlays = Math.max(1, Math.min(30, parseInt(document.getElementById("stEffScrimPlays").value,10)||10));
     settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
+    settings.scrimmFixed = (document.getElementById("stScrimmBall").value === "fixed");
     settings.eff7v7Start = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Start").value,10)||40));
     settings.eff7v7Line1 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line1").value,10)||20));
     settings.eff7v7Line2 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line2").value,10)||5));
@@ -2290,6 +2372,24 @@
     paintPuntBtn(); save(); render();
     window.scrollTo({top:0, behavior:"smooth"});
   });
+  document.getElementById("respotSignBtn").addEventListener("click", function(){
+    respotSign = -respotSign; paintRespotSign();
+  });
+  document.getElementById("respotKeep").addEventListener("click", function(){
+    var yl   = meta.scrimmStartYl   || "40";
+    var sign = meta.scrimmStartSign || -1;
+    applyRespot(yl, sign);
+    updateScrimHint(); render();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+  document.getElementById("respotSet").addEventListener("click", function(){
+    var raw = parseInt(document.getElementById("respotYl").value, 10);
+    if(isNaN(raw) || raw < 1 || raw > 50){ alert("Enter a yard line between 1 and 50."); return; }
+    applyRespot(String(raw), respotSign);
+    updateScrimHint(); render();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
   document.getElementById("modeCancel").addEventListener("click", function(){
     document.getElementById("modeModal").hidden = true;
   });
