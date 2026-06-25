@@ -425,7 +425,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.3</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.4</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1271,7 +1271,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.3", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.4", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2963,6 +2963,10 @@
     document.getElementById("yards").focus();
   }
   function openSuggest(){
+    if(plays.length < 10){
+      alert("Suggest Play needs at least 10 plays to find meaningful patterns.\n\nYou have "+plays.length+" play"+(plays.length===1?"":"s")+" logged — keep charting and try again!");
+      return;
+    }
     sg.down = draft.down; sg.hash = draft.hash;
     setSeg("sgDown", sg.down); setSeg("sgHash", sg.hash);
     document.getElementById("sgDist").value = document.getElementById("dist").value || "10";
