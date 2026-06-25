@@ -412,7 +412,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.7</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.8</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -831,6 +831,7 @@
           <select id="stScrimmBall" class="st-input">
             <option value="advance">Advance after each play</option>
             <option value="fixed">Fixed spot &mdash; reset after each play</option>
+            <option value="simulated">Simulated game &mdash; track down &amp; distance</option>
           </select>
         </div>
         <div class="st-panel-footer">
@@ -979,7 +980,7 @@
     teamColor:"#16317F", teamAccent:"#1E44C4", teamTextColor:"white",
     defaultMode:"standard", defaultDist:10,
     effStd1:5, effStd2:50, effStd3:100, effStd4:100, effScrim:5, effScrimPlays:10,
-    scrimmFixed:false,
+    scrimmBall:"advance",
     eff7v7Plays:4, eff7v7Mode:"pace",
     eff7v7Start:40, eff7v7Line1:20, eff7v7Line2:5,
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
@@ -1054,7 +1055,8 @@
       if(d.effStd4 != null) settings.effStd4 = Number(d.effStd4)||100;
       if(d.effScrim != null) settings.effScrim = Number(d.effScrim)||5;
       if(d.effScrimPlays != null) settings.effScrimPlays = Math.max(1, Math.min(30, Number(d.effScrimPlays)||10));
-      if(d.scrimmFixed != null) settings.scrimmFixed = !!d.scrimmFixed;
+      if(d.scrimmBall) settings.scrimmBall = d.scrimmBall;
+      else if(d.scrimmFixed != null) settings.scrimmBall = d.scrimmFixed ? "fixed" : "advance"; // migrate old boolean
       if(d.eff7v7Plays != null) settings.eff7v7Plays = Math.max(1, Math.min(10, Number(d.eff7v7Plays)||4));
       if(d.eff7v7Mode) settings.eff7v7Mode = d.eff7v7Mode;
       if(d.eff7v7Start != null) settings.eff7v7Start = Math.max(1, Math.min(99, Number(d.eff7v7Start)||40));
@@ -1155,7 +1157,7 @@
     document.getElementById("stEff4").value = settings.effStd4;
     document.getElementById("stEffScrimPlays").value = settings.effScrimPlays||10;
     document.getElementById("stEffScrim").value = settings.effScrim;
-    document.getElementById("stScrimmBall").value = settings.scrimmFixed ? "fixed" : "advance";
+    document.getElementById("stScrimmBall").value = settings.scrimmBall || "advance";
     document.getElementById("stEff7v7Start").value = settings.eff7v7Start||40;
     document.getElementById("stEff7v7Line1").value = settings.eff7v7Line1||20;
     document.getElementById("stEff7v7Line2").value = settings.eff7v7Line2||5;
@@ -1234,7 +1236,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.7", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.8", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1378,9 +1380,10 @@
     var is7 = (currentMode === "7v7");
     var isScrim = (currentMode === "scrimmage");
     document.getElementById("qtrFld").style.display = (is7||isScrim) ? "none" : "";
-    document.getElementById("downFld").style.display = isScrim ? "none" : "";
+    var isSim = isScrim && settings.scrimmBall === "simulated";
+    document.getElementById("downFld").style.display = (isScrim && !isSim) ? "none" : "";
     document.getElementById("ptypeFld").style.display = is7 ? "none" : "";
-    document.getElementById("distFld").style.display = (is7||isScrim) ? "none" : "";
+    document.getElementById("distFld").style.display = (is7 || (isScrim && !isSim)) ? "none" : "";
     document.getElementById("seriesRow").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series" : "");
@@ -1396,7 +1399,13 @@
       if(document.getElementById("yl").value === "") document.getElementById("yl").value = String(settings.eff7v7Start||40);
       update7v7Hint();
     } else if(isScrim){
-      draft.qtr = ""; draft.down = "";
+      draft.qtr = "";
+      if(settings.scrimmBall === "simulated"){
+        if(!draft.down || draft.down === "") { draft.down = "1"; setSeg("down", "1"); }
+        if(!document.getElementById("dist").value) document.getElementById("dist").value = settings.defaultDist||10;
+      } else {
+        draft.down = ""; setSeg("down", "");
+      }
       updateScrimHint();
     } else if(draft.qtr === ""){
       draft.qtr = "1"; setSeg("qtr", "1");
@@ -1739,6 +1748,10 @@
     document.getElementById("respotModal").hidden = true;
     document.getElementById("yl").value = yl;
     draft.ylSign = sign; paintYlSign();
+    if(currentMode === "scrimmage" && settings.scrimmBall === "simulated"){
+      draft.down = "1"; setSeg("down", "1");
+      document.getElementById("dist").value = settings.defaultDist||10;
+    }
     save();
   }
 
@@ -1799,13 +1812,15 @@
     var isScrim = (currentMode === "scrimmage");
     var preDown = draft.down;
     var preDist = parseInt(dist, 10);
+    var _isSim = isScrim && settings.scrimmBall === "simulated";
     var p = {
       id: Date.now()+"_"+Math.random().toString(36).slice(2,6),
       mode: currentMode,
-      qtr: draft.qtr, down: isScrim ? "" : draft.down, dist: isScrim ? "" : dist,
+      qtr: draft.qtr, down: (isScrim && !_isSim) ? "" : draft.down, dist: (isScrim && !_isSim) ? "" : dist,
       yl: getYL(), hash: draft.hash, type: draft.type,
       form: form, call: call, motion: motion, front: front, coverage: coverage, yards: yards,
-      tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note
+      tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note,
+      simGame: _isSim || undefined
     };
     if(isScrim){ var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; }
     // Auto-tag failed 4th-down conversion as Turnover (turnover on downs)
@@ -1859,6 +1874,19 @@
       paintPuntBtn();
     } else if(isScrim){
       updateScrimHint();
+      if(_isSim){
+        var _d = parseInt(preDown, 10), _pd = parseInt(preDist, 10);
+        if(yards >= _pd || p.tags.indexOf("1st Down") > -1){
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist||10;
+        } else if(_d < 4){
+          draft.down = String(_d+1); setSeg("down", String(_d+1));
+          document.getElementById("dist").value = Math.max(_pd - yards, 1);
+        } else {
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist||10;
+        }
+      }
     }
     // turnover: override auto-advance and reset to 1st & 10 (possession changed)
     if(p.tags.indexOf("Turnover") > -1 && currentMode === "standard"){
@@ -1868,7 +1896,7 @@
     }
     // auto-advance ball-on (standard + scrimmage only; 7v7 handled above)
     if(currentMode !== "7v7"){
-      if(isScrim && settings.scrimmFixed){
+      if(isScrim && settings.scrimmBall === "fixed"){
         // Fixed spot: capture start on first play of each series, then reset ball
         if(!meta.scrimmStartYl || p.playNum === 1){
           var _ylNum = Number(p.yl);
@@ -1901,8 +1929,26 @@
       document.getElementById("yl").value = res.ball;
       update7v7Hint();
     } else if(currentMode === "scrimmage"){
-      draft.down = ""; setSeg("down", "");
-      if(settings.scrimmFixed && meta.scrimmStartYl){
+      var _rSim = settings.scrimmBall === "simulated";
+      if(_rSim && last.simGame){
+        var _rD = parseInt(last.down, 10), _rDist = parseInt(last.dist, 10), _rYds = last.yards;
+        if(last.tags.indexOf("TD") > -1 || last.tags.indexOf("Turnover") > -1){
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist||10;
+        } else if(_rYds >= _rDist || last.tags.indexOf("1st Down") > -1){
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist||10;
+        } else if(!isNaN(_rD) && _rD < 4){
+          draft.down = String(_rD+1); setSeg("down", String(_rD+1));
+          document.getElementById("dist").value = Math.max(_rDist - _rYds, 1);
+        } else {
+          draft.down = "1"; setSeg("down", "1");
+          document.getElementById("dist").value = settings.defaultDist||10;
+        }
+      } else {
+        draft.down = ""; setSeg("down", "");
+      }
+      if(settings.scrimmBall === "fixed" && meta.scrimmStartYl){
         document.getElementById("yl").value = meta.scrimmStartYl;
         draft.ylSign = meta.scrimmStartSign || -1; paintYlSign();
       } else {
@@ -2000,7 +2046,10 @@
     return String(s||"").replace(/\S+/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1); });
   }
   function dnDist(p){
-    if(p.mode === "scrimmage"){ return p.playNum ? ("Play "+esc(p.playNum)) : "&mdash;"; }
+    if(p.mode === "scrimmage"){
+      if(p.simGame){ var ds=p.dist!=null&&p.dist!==""?esc(p.dist):""; return ds?(esc(p.down)+" &amp; "+ds):esc(p.down); }
+      return p.playNum ? ("Play "+esc(p.playNum)) : "&mdash;";
+    }
     var ds = (p.dist===""||p.dist==null) ? "" : esc(p.dist);
     return ds ? (esc(p.down)+" &amp; "+ds) : esc(p.down);
   }
@@ -2113,10 +2162,11 @@
     plays = []; meta = {opp:"", date:today};
     document.getElementById("opp").value=""; document.getElementById("gdate").value=today;
     // reset entry context
+    var _simScrim = (mode==="scrimmage" && settings.scrimmBall==="simulated");
     draft.qtr = (mode==="standard") ? "1" : ""; setSeg("qtr", "1");
-    draft.down = (mode==="scrimmage") ? "" : "1"; setSeg("down", "1");
+    draft.down = (mode==="scrimmage" && !_simScrim) ? "" : "1"; setSeg("down", "1");
     draft.type = (mode==="7v7") ? "pass" : "run"; setSeg("ptype", draft.type);
-    document.getElementById("dist").value = (mode==="standard") ? String(settings.defaultDist||10) : "";
+    document.getElementById("dist").value = (mode==="standard"||_simScrim) ? String(settings.defaultDist||10) : "";
     document.getElementById("yl").value = (mode==="7v7") ? String(settings.eff7v7Start||40) : "";
     applyMode();
     save(); render();
@@ -2269,7 +2319,7 @@
     settings.effStd4 = Math.min(100, Math.max(0, parseInt(document.getElementById("stEff4").value,10)||100));
     settings.effScrimPlays = Math.max(1, Math.min(30, parseInt(document.getElementById("stEffScrimPlays").value,10)||10));
     settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
-    settings.scrimmFixed = (document.getElementById("stScrimmBall").value === "fixed");
+    settings.scrimmBall = document.getElementById("stScrimmBall").value || "advance";
     settings.eff7v7Start = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Start").value,10)||40));
     settings.eff7v7Line1 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line1").value,10)||20));
     settings.eff7v7Line2 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line2").value,10)||5));
