@@ -255,7 +255,8 @@
   .rank{font-family:var(--num);font-weight:700;font-size:18px;color:var(--royal-2)}
   .rank-bad{color:#c0392b}
   .bar.bad>i{background:#c0392b}
-  .modal-wide{max-width:700px}
+  .modal-wide{max-width:min(92vw,960px);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal-wide .drill-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
   tr[data-drill]{cursor:pointer}
   tr[data-drill]:hover td{background:var(--royal-bg)}
   .drill-stats{display:flex;gap:20px;flex-wrap:wrap;padding:10px 0 14px;border-bottom:1px solid var(--line);margin-bottom:14px}
@@ -425,7 +426,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.4</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.5</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -971,7 +972,7 @@
       <h2 id="drillTitle" style="margin:0;font-size:18px"></h2>
       <button id="drillClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
     </div>
-    <div id="drillBody" style="max-height:68vh;overflow-y:auto"></div>
+    <div id="drillBody" class="drill-scroll"></div>
   </div>
 </div>
 
@@ -1271,7 +1272,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.4", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.5", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
