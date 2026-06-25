@@ -255,6 +255,14 @@
   .rank{font-family:var(--num);font-weight:700;font-size:18px;color:var(--royal-2)}
   .rank-bad{color:#c0392b}
   .bar.bad>i{background:#c0392b}
+  .modal-wide{max-width:700px}
+  tr[data-drill]{cursor:pointer}
+  tr[data-drill]:hover td{background:var(--royal-bg)}
+  .drill-stats{display:flex;gap:20px;flex-wrap:wrap;padding:10px 0 14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .drill-stats span{font-size:14px;color:var(--muted)}
+  .drill-stats b{font-family:var(--num);color:var(--ink);font-size:17px;display:block}
+  .drill-game-group{margin-bottom:18px}
+  .drill-game-head{font-family:var(--num);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--royal);padding:6px 0 4px;border-bottom:2px solid var(--royal-bg);margin-bottom:6px}
   .ratecell{display:flex;align-items:center;gap:8px}
   .bar{height:8px;background:var(--line);border-radius:5px;overflow:hidden;width:64px;flex:none}
   .bar>i{display:block;height:100%;background:var(--good)}
@@ -417,7 +425,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.2</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.3</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -957,6 +965,16 @@
   </div>
 </div>
 
+<div class="modal-back" id="drillModal" hidden>
+  <div class="modal modal-wide">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <h2 id="drillTitle" style="margin:0;font-size:18px"></h2>
+      <button id="drillClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
+    </div>
+    <div id="drillBody" style="max-height:68vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div class="modal-back" id="archiveModal" hidden>
   <div class="modal">
     <h2>Archive Season</h2>
@@ -1253,7 +1271,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.2", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.3", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -3036,7 +3054,7 @@
     if(!calls.length) return '<div class="none">No plays yet.</div>';
     var rows = calls.map(function(g,i){
       var rep = g.best || {}; var rate = Math.round(100*g.rate); var avgSign = g.avg>0?"+":"";
-      return '<tr>'+
+      return '<tr data-drill="'+esc(g.name)+'">'+
         '<td><span class="rank">'+(i+1)+'</span></td>'+
         '<td><b>'+esc(g.name)+'</b></td>'+
         '<td>'+typePill(rep.type||"run")+'</td>'+
@@ -3056,7 +3074,7 @@
     if(!calls.length) return '<div class="none">Not enough data yet (need plays run 2+ times).</div>';
     var rows = calls.map(function(g,i){
       var rep = g.best || {}; var rate = Math.round(100*g.rate); var avgSign = g.avg>0?"+":"";
-      return '<tr>'+
+      return '<tr data-drill="'+esc(g.name)+'">'+
         '<td><span class="rank rank-bad">'+(i+1)+'</span></td>'+
         '<td><b>'+esc(g.name)+'</b></td>'+
         '<td>'+typePill(rep.type||"run")+'</td>'+
@@ -3069,6 +3087,53 @@
     return '<div class="table-scroll"><table><thead><tr>'+
       '<th>Rank</th><th>Play call</th><th>Type</th><th>Times</th><th>Effective</th><th>Success rate</th><th>Avg yds</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  function buildDrillDown(callName){
+    var nameKey = callName.toLowerCase();
+    var groups = [];
+    function addGroup(gname, gdate, list){
+      var matching = list.filter(function(p){ return (p.call||"").trim().toLowerCase() === nameKey; });
+      if(matching.length) groups.push({name:gname, date:gdate, plays:matching});
+    }
+    var activeGames = viewingSeason ? viewingSeason.games : games.filter(function(g){ return g.id !== currentGameId; });
+    activeGames.slice().sort(function(a,b){ return (a.savedAt||0)-(b.savedAt||0); }).forEach(function(g){
+      addGroup(gameName(g), gameDateText(g), g.plays||[]);
+    });
+    if(!viewingSeason && plays.length) addGroup((meta.opp?"vs "+meta.opp:"Current game")+" (in progress)", meta.date||"", plays);
+    if(!groups.length) return '<div class="none">No matching plays found.</div>';
+    var total = 0, effCount = 0, totalYds = 0;
+    groups.forEach(function(g){ g.plays.forEach(function(p){ total++; if(p.success) effCount++; totalYds += (p.yards||0); }); });
+    var rate = Math.round(100*effCount/total); var avgYds = (totalYds/total).toFixed(1);
+    var statsHtml = '<div class="drill-stats">'+
+      '<span><b>'+total+'</b>times run</span>'+
+      '<span><b>'+effCount+'/'+total+'</b>effective</span>'+
+      '<span><b>'+rate+'%</b>success rate</span>'+
+      '<span><b>'+(totalYds>=0?"+":"")+avgYds+'</b>avg yards</span>'+
+    '</div>';
+    var groupsHtml = groups.map(function(g){
+      var rows = g.plays.map(function(p,i){
+        var dir = p.yards>0?"up":(p.yards<0?"down":"flat"); var sign = p.yards>0?"+":"";
+        var ctx = p.mode==="scrimmage" ? "Ser "+esc(p.series||"") : "Q"+esc(p.qtr||"");
+        var tags = (p.tags||[]).length ? '<span style="font-size:11px;color:var(--muted)">'+p.tags.map(esc).join(", ")+'</span>' : "";
+        return '<tr>'+
+          '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
+          '<td>'+ctx+'</td>'+
+          '<td><b style="font-family:var(--num)">'+dnDist(p)+'</b></td>'+
+          '<td>'+(p.yl!=null&&p.yl!==""?esc(String(p.yl)):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash||"")+'</span></td>'+
+          '<td>'+esc(p.form||"&mdash;")+'</td>'+
+          '<td>'+tags+'</td>'+
+          '<td><span class="res '+dir+'">'+sign+p.yards+'</span></td>'+
+          '<td><span class="succ '+(p.success?"y":"n")+'">'+(p.success?"✓":"✗")+'</span></td>'+
+        '</tr>';
+      }).join("");
+      return '<div class="drill-game-group">'+
+        '<div class="drill-game-head">'+esc(g.name)+(g.date?' <span style="font-weight:400;color:var(--muted)">· '+esc(g.date)+'</span>':'')+'</div>'+
+        '<div class="table-scroll"><table><thead><tr>'+
+          '<th>#</th><th>Qtr/Ser</th><th>Dn &amp; Dist</th><th>Ball On</th><th>Formation</th><th>Tags</th><th>Yds</th><th>Eff</th>'+
+        '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '</div>';
+    }).join("");
+    return statsHtml + groupsHtml;
   }
   function gameCard(item, readOnly){
     // item: {id, name, date, plays, isCurrent}
@@ -3248,6 +3313,14 @@
         return;
       }
     }
+    var drill = e.target.closest("[data-drill]");
+    if(drill){
+      var callName = drill.getAttribute("data-drill");
+      document.getElementById("drillTitle").textContent = callName;
+      document.getElementById("drillBody").innerHTML = buildDrillDown(callName);
+      document.getElementById("drillModal").hidden = false;
+      return;
+    }
     var tab = e.target.closest("[data-stab]");
     if(tab){
       var tid = tab.getAttribute("data-stab");
@@ -3279,6 +3352,12 @@
       if(confirm("Delete this saved game? This can't be undone.")){
         games = games.filter(function(g){return g.id!==gid;}); save(); renderSeason();
       } return; }
+  });
+  document.getElementById("drillClose").addEventListener("click", function(){
+    document.getElementById("drillModal").hidden = true;
+  });
+  document.getElementById("drillModal").addEventListener("click", function(e){
+    if(e.target === this) this.hidden = true;
   });
   document.getElementById("archiveConfirm").addEventListener("click", function(){
     var name = document.getElementById("archiveName").value.trim();
