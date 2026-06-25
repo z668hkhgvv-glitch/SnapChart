@@ -412,7 +412,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.8</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.9</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1236,7 +1236,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.8", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.9", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2982,9 +2982,27 @@
         '<td><span class="succ '+(p.success?"y":"n")+'">'+(p.success?"\u2713":"\u2717")+'</span></td>'+
       '</tr>';
     }).join("");
+    var noteRows = list.map(function(p, i){
+      if(!p.note) return "";
+      var sign = p.yards > 0 ? "+" : "";
+      var detail = [
+        p.qtr ? "Q"+esc(p.qtr) : (p.series ? "Series "+esc(p.series) : ""),
+        p.down ? dnDist(p) : "",
+        p.yl ? "Ball "+esc(p.yl) : "",
+        p.form ? esc(p.form) : "",
+        p.call ? esc(p.call) : "",
+        sign+p.yards+" yds",
+        p.success ? "✓ Effective" : ""
+      ].filter(Boolean).join(" · ");
+      return '<div class="notes-play">'+
+        '<div class="notes-play-header"><span class="notes-play-num">#'+(i+1)+'</span> '+detail+'</div>'+
+        '<div class="notes-play-note">'+esc(p.note)+'</div>'+
+      '</div>';
+    }).join("");
+    var notesSection = noteRows ? '<h3 class="down-h" style="margin-top:18px">Notes</h3>'+noteRows : "";
     return '<div class="table-scroll"><table><thead><tr>'+
       '<th>#</th><th>Qtr</th><th>Dn &amp; Dist</th><th>Ball</th><th>Type</th><th>Formation</th><th>Play call</th><th>Yds</th><th>Effective</th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>'+notesSection;
   }
   function seasonCallsTable(list){
     var calls = groupCalls(list).slice(0, 10);
