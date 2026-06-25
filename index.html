@@ -250,6 +250,8 @@
   .rbtn.on{background:var(--royal-2);border-color:var(--royal-2);color:#fff}
   .report-summary{font-size:14px;color:var(--muted);font-weight:500;margin-bottom:12px}
   .rank{font-family:var(--num);font-weight:700;font-size:18px;color:var(--royal-2)}
+  .rank-bad{color:#c0392b}
+  .bar.bad>i{background:#c0392b}
   .ratecell{display:flex;align-items:center;gap:8px}
   .bar{height:8px;background:var(--line);border-radius:5px;overflow:hidden;width:64px;flex:none}
   .bar>i{display:block;height:100%;background:var(--good)}
@@ -412,7 +414,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.9</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.0</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1236,7 +1238,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.9", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.0", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -3005,7 +3007,7 @@
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'+notesSection;
   }
   function seasonCallsTable(list){
-    var calls = groupCalls(list).slice(0, 10);
+    var calls = groupCalls(list).filter(function(g){ return g.count >= 2; }).slice(0, 10);
     if(!calls.length) return '<div class="none">No plays yet.</div>';
     var rows = calls.map(function(g,i){
       var rep = g.best || {}; var rate = Math.round(100*g.rate); var avgSign = g.avg>0?"+":"";
@@ -3016,6 +3018,26 @@
         '<td><b style="font-family:var(--num)">'+g.count+'</b></td>'+
         '<td><b style="font-family:var(--num)">'+g.eff+'/'+g.count+'</b></td>'+
         '<td><div class="ratecell"><div class="bar"><i style="width:'+rate+'%"></i></div><b>'+rate+'%</b></div></td>'+
+        '<td><span class="res '+(g.avg>0?"up":(g.avg<0?"down":"flat"))+'">'+avgSign+g.avg.toFixed(1)+'</span></td>'+
+      '</tr>';
+    }).join("");
+    return '<div class="table-scroll"><table><thead><tr>'+
+      '<th>Rank</th><th>Play call</th><th>Type</th><th>Times</th><th>Effective</th><th>Success rate</th><th>Avg yds</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  function seasonLeastCallsTable(list){
+    var all = groupCalls(list).filter(function(g){ return g.count >= 2; });
+    var calls = all.slice(-10).reverse();
+    if(!calls.length) return '<div class="none">Not enough data yet (need plays run 2+ times).</div>';
+    var rows = calls.map(function(g,i){
+      var rep = g.best || {}; var rate = Math.round(100*g.rate); var avgSign = g.avg>0?"+":"";
+      return '<tr>'+
+        '<td><span class="rank rank-bad">'+(i+1)+'</span></td>'+
+        '<td><b>'+esc(g.name)+'</b></td>'+
+        '<td>'+typePill(rep.type||"run")+'</td>'+
+        '<td><b style="font-family:var(--num)">'+g.count+'</b></td>'+
+        '<td><b style="font-family:var(--num)">'+g.eff+'/'+g.count+'</b></td>'+
+        '<td><div class="ratecell"><div class="bar bad"><i style="width:'+rate+'%"></i></div><b>'+rate+'%</b></div></td>'+
         '<td><span class="res '+(g.avg>0?"up":(g.avg<0?"down":"flat"))+'">'+avgSign+g.avg.toFixed(1)+'</span></td>'+
       '</tr>';
     }).join("");
@@ -3080,7 +3102,8 @@
       '<div class="stat"><div class="v">'+(n?Math.round(100*runs/n)+"/"+Math.round(100*passes/n):"\u2014")+'</div><div class="k">Run / Pass</div></div>'+
     '</div>';
 
-    var topCalls = '<h3 class="down-h">Top plays this season<span class="down-h-sub">all games, ranked by success rate</span></h3>'+seasonCallsTable(all);
+    var topCalls = '<h3 class="down-h">Top plays this season<span class="down-h-sub">all games, ranked by success rate</span></h3>'+seasonCallsTable(all)+
+      '<h3 class="down-h">Least effective plays this season<span class="down-h-sub">played 2+ times, ranked lowest success rate first</span></h3>'+seasonLeastCallsTable(all);
 
     var items = [];
     if(plays.length){
