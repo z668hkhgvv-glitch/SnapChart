@@ -53,6 +53,9 @@
     background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);padding:3px 10px;border-radius:999px}
   .offstat.ready{color:#c7f3d6;background:rgba(40,170,90,.28);border-color:rgba(150,230,180,.55)}
   .offstat:empty{display:none}
+  .game-meta-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .header-backup{font-size:11px;color:var(--board-fg-dim);letter-spacing:.02em;text-align:right;min-height:13px;line-height:1}
+  .header-backup.stale{color:#fca5a5}
   .game-meta{display:flex;gap:8px;align-items:center}
   .game-meta input{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:var(--board-fg);
     border-radius:8px;padding:8px 10px;font-family:var(--body);font-size:13px;width:140px;}
@@ -414,14 +417,17 @@
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
       </div>
-      <div class="game-meta">
-        <input id="opp" placeholder="vs Opponent">
-        <div class="date-wrap">
-          <input id="gdate" placeholder="Date / Week" autocomplete="off" readonly>
-          <span class="cal-icon" aria-hidden="true">&#128197;</span>
-          <input type="date" id="gdatePicker" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+      <div class="game-meta-wrap">
+        <div id="headerBackupStatus" class="header-backup"></div>
+        <div class="game-meta">
+          <input id="opp" placeholder="vs Opponent">
+          <div class="date-wrap">
+            <input id="gdate" placeholder="Date / Week" autocomplete="off" readonly>
+            <span class="cal-icon" aria-hidden="true">&#128197;</span>
+            <input type="date" id="gdatePicker" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+          </div>
+          <button id="settingsBtn" class="settings-btn" type="button" aria-label="Settings">&#9881;</button>
         </div>
-        <button id="settingsBtn" class="settings-btn" type="button" aria-label="Settings">&#9881;</button>
       </div>
     </div>
   </header>
@@ -1263,14 +1269,19 @@
     }catch(ex){ alert("Recovery failed: "+ex.message); }
   }
   function updateLastBackupLabel(){
-    var el = document.getElementById("stLastBackup"); if(!el) return;
+    var el = document.getElementById("stLastBackup");
+    var hdr = document.getElementById("headerBackupStatus");
     var ts = localStorage.getItem(EXPORT_TS_KEY);
-    if(!ts){ el.textContent = "Never — back up now!"; el.style.color = "var(--bad)"; return; }
+    if(!ts){
+      if(el){ el.textContent = "Never — back up now!"; el.style.color = "var(--bad)"; }
+      if(hdr){ hdr.textContent = "Backup: Never"; hdr.classList.add("stale"); }
+      return;
+    }
     var days = Math.floor((Date.now() - Number(ts)) / 86400000);
     var d = new Date(Number(ts));
     var label = days === 0 ? "Today" : days === 1 ? "Yesterday" : days+" days ago";
-    el.textContent = label+" ("+d.toLocaleDateString("en-US")+")";
-    el.style.color = days > 7 ? "var(--bad)" : "var(--muted)";
+    if(el){ el.textContent = label+" ("+d.toLocaleDateString("en-US")+")"; el.style.color = days > 7 ? "var(--bad)" : "var(--muted)"; }
+    if(hdr){ hdr.textContent = "Backup: "+label; hdr.classList.toggle("stale", days > 7); }
   }
   function updateRecoverRow(){
     var row = document.getElementById("stRecoverRow"); if(!row) return;
@@ -2984,7 +2995,7 @@
   bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
 
   // ---- boot ----
-  load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); });
+  load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); updateLastBackupLabel(); });
 
   // ---- dismiss the startup splash when the user taps Continue ----
   (function(){
