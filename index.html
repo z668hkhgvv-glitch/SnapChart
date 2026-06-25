@@ -417,7 +417,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.1</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.2</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1253,7 +1253,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.1", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.2", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1327,11 +1327,14 @@
       if(hdr){ hdr.textContent = "Backup: Never"; hdr.classList.add("stale"); }
       return;
     }
-    var days = Math.floor((Date.now() - Number(ts)) / 86400000);
     var d = new Date(Number(ts));
-    var label = days === 0 ? "Today" : days === 1 ? "Yesterday" : days+" days ago";
-    if(el){ el.textContent = label+" ("+d.toLocaleDateString("en-US")+")"; el.style.color = days > 7 ? "var(--bad)" : "var(--muted)"; }
-    if(hdr){ hdr.textContent = "Backup: "+label; hdr.classList.toggle("stale", days > 7); }
+    var now = new Date();
+    var yest = new Date(now); yest.setDate(now.getDate() - 1);
+    function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    var label = sameDay(d, now) ? "Today" : sameDay(d, yest) ? "Yesterday" : Math.floor((Date.now()-Number(ts))/86400000)+" days ago";
+    var stale = !sameDay(d, now) && !sameDay(d, yest) && Math.floor((Date.now()-Number(ts))/86400000) > 7;
+    if(el){ el.textContent = label+" ("+d.toLocaleDateString("en-US")+")"; el.style.color = stale ? "var(--bad)" : "var(--muted)"; }
+    if(hdr){ hdr.textContent = "Backup: "+label; hdr.classList.toggle("stale", stale); }
   }
   function updateRecoverRow(){
     var row = document.getElementById("stRecoverRow"); if(!row) return;
