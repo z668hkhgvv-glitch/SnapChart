@@ -412,7 +412,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.4.3</span></h1>
+        <h1>SnapChart<span class="appversion">1.4.5</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -573,9 +573,7 @@
       <button id="suggestBtn" class="primary">&#9733; Suggest Play</button>
       <button id="reportBtn" class="primary">&#9776; Quick Report</button>
       <button id="seasonBtn" class="primary">&#128197; Season</button>
-      <button id="exportBtn">Export CSV</button>
-      <button id="hudlBtn">Export for Hudl</button>
-      <button id="printBtn">Print</button>
+
       <button id="saveGameBtn" class="primary">&#128190; Save game</button>
       <button id="resetBtn" class="danger" hidden>New game</button>
       <button id="endGameBtn" class="danger" hidden>End Game</button>
@@ -1204,7 +1202,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.4.3", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.4.5", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2301,48 +2299,30 @@
     document.getElementById("modeModal").hidden = true;
     startNewGame(pick.getAttribute("data-mode"));
   });
-  document.getElementById("printBtn").addEventListener("click", function(){ window.print(); });
-  document.getElementById("exportBtn").addEventListener("click", function(){
+  function dlFile(filename, content){
+    var blob = new Blob([content], {type:"text/csv"});
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function csvEsc(c){ c=String(c==null?"":c); return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }
+  function exportGameCSV(list, label){
+    if(!list.length){ alert("No plays to export."); return; }
     var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes"];
     var lines = [head.join(",")];
-    try {
-      plays.forEach(function(p,i){
-        var row = [i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""];
-        lines.push(row.map(function(c){ c=String(c==null?"":c);
-          return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
-      });
-    } catch(ex) { alert("Export error: "+ex.message); return; }
-    if(lines.length < 2){ alert("No plays to export. Log some snaps first."); return; }
-    var blob = new Blob([lines.join("\n")], {type:"text/csv"});
-    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    var tname = (settings.teamName||"team").replace(/\s+/g,"_");
-    a.download = tname+"-play-chart"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  });
-
-  document.getElementById("hudlBtn").addEventListener("click", function(){
-    // Hudl breakdown layout: one row per clip, in play order. Import via Hudl's
-    // Import Breakdown Data so each row attaches to its matching video clip.
+    list.forEach(function(p,i){
+      lines.push([i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""].map(csvEsc).join(","));
+    });
+    dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+".csv", lines.join("\n"));
+  }
+  function exportGameHudl(list, label){
+    if(!list.length){ alert("No plays to export."); return; }
     var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
     var lines = [head.join(",")];
-    try {
-      plays.forEach(function(p,i){
-        var row = [
-          i+1, p.qtr||"", "O", p.down||"", p.dist||"", p.hash||"", p.yl||"",
-          p.form||"", (p.type==="run"?"Run":"Pass"), p.call||"",
-          p.motion||"", p.front||"", p.coverage||"", p.yards, (p.success?"Y":"N")
-        ];
-        lines.push(row.map(function(c){ c=String(c==null?"":c);
-          return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
-      });
-    } catch(ex) { alert("Export error: "+ex.message); return; }
-    if(lines.length < 2){ alert("No plays to export. Log some snaps first."); return; }
-    var blob = new Blob([lines.join("\n")], {type:"text/csv"});
-    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    var tname2 = (settings.teamName||"team").replace(/\s+/g,"_");
-    a.download = tname2+"-hudl"+(meta.opp?"-"+meta.opp.replace(/\s+/g,"_"):"")+".csv";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  });
+    list.forEach(function(p,i){
+      lines.push([i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
+    });
+    dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+"-hudl.csv", lines.join("\n"));
+  }
 
   // ---- Quick Report ----
   var reportMode = "most";
@@ -2891,6 +2871,8 @@
           '<div class="sg-stat"><div class="v good">'+rate+'%</div><div class="k">Effective</div></div>'+
           '<div class="sg-stat"><div class="v">'+(avg>0?"+":"")+avg.toFixed(1)+'</div><div class="k">Yds/play</div></div>'+
           '<button class="gbtn" data-view="'+item.id+'">'+(open?"Hide":"View")+'</button>'+
+          '<button class="gbtn" data-gcsv="'+item.id+'">CSV</button>'+
+          '<button class="gbtn" data-ghudl="'+item.id+'">Hudl</button>'+
           del+
         '</div>'+
       '</div>'+
@@ -2915,7 +2897,11 @@
       return;
     }
 
-    sum.innerHTML = '<button class="gbtn" data-act="export" style="float:right">Download season CSV</button>'+
+    sum.innerHTML = '<div style="float:right;display:flex;gap:6px;flex-wrap:wrap">'+
+      '<button class="gbtn" data-act="season-csv">Season CSV</button>'+
+      '<button class="gbtn" data-act="season-hudl">Season Hudl</button>'+
+      '<button class="gbtn" data-act="print">Print</button>'+
+      '</div>'+
       savedCount+' saved game'+(savedCount===1?"":"s")+(plays.length?' + 1 in progress':'')+' \u00b7 '+n+' plays \u00b7 '+rate+'% effective overall';
 
     var cards = '<div class="season-cards">'+
@@ -2952,25 +2938,55 @@
     window.scrollTo(0,0);
   }
   function exportSeasonCSV(){
-    var head = ["Game","Date","#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags"];
+    var head = ["Game","Date","#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes"];
     var lines = [head.join(",")];
     function addRows(label, date, list){
       list.forEach(function(p,i){
-        var row = [label,date,i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | ")];
-        lines.push(row.map(function(c){ c=String(c==null?"":c); return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(","));
+        lines.push([label,date,i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""].map(csvEsc).join(","));
       });
     }
     games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), gameDateText(g), g.plays||[]); });
     if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), meta.date||"", plays);
     if(lines.length < 2){ alert("No plays to export. Save a game or log some snaps first."); return; }
-    var blob = new Blob([lines.join("\n")], {type:"text/csv"});
-    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = (settings.teamName||"team").replace(/\s+/g,"_")+"-season.csv";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-season.csv", lines.join("\n"));
+  }
+  function exportSeasonHudl(){
+    var head = ["Game","Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
+    var lines = [head.join(",")];
+    function addRows(label, list){
+      list.forEach(function(p,i){
+        lines.push([label,i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
+      });
+    }
+    games.forEach(function(g){ if(g.id !== currentGameId) addRows(gameName(g), g.plays||[]); });
+    if(plays.length) addRows((meta.opp?("vs "+meta.opp):"Current game"), plays);
+    if(lines.length < 2){ alert("No plays to export. Save a game or log some snaps first."); return; }
+    dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-season-hudl.csv", lines.join("\n"));
   }
   document.getElementById("seasonBtn").addEventListener("click", openSeason);
   document.getElementById("seasonBack").addEventListener("click", closeSeason);
-  document.getElementById("seasonBody").addEventListener("click", function(e){
+  document.getElementById("season").addEventListener("click", function(e){
+    var act = e.target.closest("[data-act]");
+    if(act){
+      var a = act.getAttribute("data-act");
+      if(a === "season-csv"){ exportSeasonCSV(); return; }
+      if(a === "season-hudl"){ exportSeasonHudl(); return; }
+      if(a === "print"){ window.print(); return; }
+    }
+    var gc = e.target.closest("[data-gcsv]");
+    if(gc){
+      var gid = gc.getAttribute("data-gcsv");
+      var glist = gid === "current" ? plays : ((games.find(function(g){return g.id===gid;})||{}).plays||[]);
+      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(games.find(function(g){return g.id===gid;})||{});
+      exportGameCSV(glist, glabel); return;
+    }
+    var gh = e.target.closest("[data-ghudl]");
+    if(gh){
+      var gid = gh.getAttribute("data-ghudl");
+      var glist = gid === "current" ? plays : ((games.find(function(g){return g.id===gid;})||{}).plays||[]);
+      var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(games.find(function(g){return g.id===gid;})||{});
+      exportGameHudl(glist, glabel); return;
+    }
     var v = e.target.closest("[data-view]");
     if(v){ var id=v.getAttribute("data-view"); seasonExpanded[id]=!seasonExpanded[id]; renderSeason(); return; }
     var d = e.target.closest("[data-del]");
@@ -2978,7 +2994,6 @@
       if(confirm("Delete this saved game? This can't be undone.")){
         games = games.filter(function(g){return g.id!==gid;}); save(); renderSeason();
       } return; }
-    if(e.target.closest('[data-act="export"]')){ exportSeasonCSV(); }
   });
 
   // ---- auto-capitalize words on the text entry fields ----
