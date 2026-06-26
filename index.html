@@ -397,6 +397,18 @@
   .lib-cat-pick{width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--chalk);
     border-radius:8px;font-size:14px;background:var(--white);color:var(--ink);cursor:pointer}
   .lib-empty{padding:10px 0;color:var(--muted);font-size:14px;font-style:italic}
+
+  .player-stat-table{width:100%;border-collapse:collapse;font-size:14px}
+  .player-stat-table th{font-family:var(--num);font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px;border-bottom:2px solid var(--line);text-align:left}
+  .player-stat-table td{padding:6px 8px;border-bottom:1px solid var(--line)}
+  .player-stat-table tr:last-child td{border-bottom:none}
+  .player-stat-table .pnum{font-family:var(--num);font-weight:700;font-size:18px;color:var(--royal-2);display:inline-block;width:28px}
+  .player-section-head{font-family:var(--num);font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--royal);margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--royal-bg)}
+  .roster-player{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+  .roster-player:last-child{border-bottom:none}
+  .roster-jersey{font-family:var(--num);font-weight:700;font-size:15px;color:var(--royal);min-width:28px}
+  .roster-name{flex:1;font-size:14px}
+  .roster-pos{font-size:12px;color:var(--muted);background:var(--royal-bg);border-radius:4px;padding:1px 6px}
 </style>
 
 <div id="splash">
@@ -426,7 +438,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.5</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.7</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -532,6 +544,21 @@
       </div>
     </div>
 
+    <div class="row" id="passerRow" style="display:none">
+      <div class="fld grow"><label>Passer</label>
+        <select id="fPasser" class="field" style="height:46px;font-size:15px"><option value="">— select —</option></select>
+      </div>
+      <div class="fld grow"><label>Receiver</label>
+        <select id="fReceiver" class="field" style="height:46px;font-size:15px"><option value="">— select —</option></select>
+      </div>
+    </div>
+
+    <div class="row" id="rusherRow" style="display:none">
+      <div class="fld grow"><label>Rusher</label>
+        <select id="fRusher" class="field" style="height:46px;font-size:15px"><option value="">— select —</option></select>
+      </div>
+    </div>
+
     <div class="row" id="defRow">
       <div class="fld grow" id="frontFld"><label>Defensive front</label>
         <input id="front" type="text" autocomplete="off" autocapitalize="words"
@@ -624,6 +651,7 @@
     <button id="rbHash" class="rbtn">By Hash</button>
     <button id="rbSeries" class="rbtn" style="display:none">By Series</button>
     <button id="rbNotes" class="rbtn">Game Notes</button>
+    <button id="rbPlayers" class="rbtn">Players</button>
   </div>
 
   <div class="report-summary" id="reportSummary"></div>
@@ -694,6 +722,7 @@
       <button class="stnav-item" data-sec="effectiveness">Effectiveness</button>
       <button class="stnav-item" data-sec="tags">Result Tags</button>
       <button class="stnav-item" data-sec="library">Library</button>
+      <button class="stnav-item" data-sec="players">Players</button>
       <button class="stnav-item" data-sec="backup">Backup &amp; Restore</button>
       <button class="stnav-item" data-sec="update">App Update</button>
     </nav>
@@ -884,6 +913,43 @@
         <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Entire Library</button>
       </div>
 
+      <div class="st-section" data-panel="players" hidden>
+        <div class="st-h">Player Tracking</div>
+        <p class="st-desc">Track passer, receiver, and rusher on each play. Requires a roster.</p>
+        <div class="st-row">
+          <span class="st-label">Track players</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="stgTrackPlayers" style="width:18px;height:18px;cursor:pointer">
+            <span style="font-size:13px;color:var(--muted)">Show passer / receiver / rusher fields</span>
+          </label>
+        </div>
+        <div id="rosterSection">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">Roster</span>
+            <button id="importRosterBtn" class="cancel" style="margin:0;font-size:12px;padding:4px 10px;height:auto">Import Hudl CSV</button>
+            <input id="rosterCsvInput" type="file" accept=".csv" style="display:none">
+          </div>
+          <div id="rosterList" style="margin-bottom:10px;max-height:180px;overflow-y:auto"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input id="rosterName" type="text" class="st-input" placeholder="Player name" style="flex:1;min-width:120px">
+            <input id="rosterJersey" type="text" class="st-input" placeholder="#" style="width:56px">
+            <select id="rosterPos" class="st-input" style="width:80px">
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+              <option value="OL">OL</option>
+              <option value="K">K</option>
+              <option value="Other">Other</option>
+            </select>
+            <button id="addRosterPlayerBtn" class="add" style="flex:none;height:42px;padding:0 14px;font-size:15px">+ Add</button>
+          </div>
+        </div>
+        <div class="st-panel-footer">
+          <button class="add stSaveAlias" style="width:100%">Save Settings</button>
+        </div>
+      </div>
+
       <div class="st-section" data-panel="backup" hidden>
         <div class="st-h">Backup &amp; Restore</div>
         <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
@@ -1019,7 +1085,9 @@
     scrimmBall:"advance",
     eff7v7Plays:4, eff7v7Mode:"pace",
     eff7v7Start:40, eff7v7Line1:20, eff7v7Line2:5,
-    tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"]
+    tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"],
+    trackPlayers: false,
+    roster: []
   };
   var COLOR_PALETTE = [
     {name:"Royal Blue",   color:"#16317F", accent:"#1E44C4", text:"white"},
@@ -1045,6 +1113,7 @@
   var games = []; // saved past games for season review
   var currentGameId = null;
   var currentMode = "standard"; // "standard" or "7v7"
+  var lastPasser = '', lastReceiver = '', lastRusher = '';
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
   var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, ylSign:-1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
@@ -1162,6 +1231,209 @@
     if(arr.map(function(s){ return s.toLowerCase(); }).indexOf(val.toLowerCase()) < 0){ arr.push(val); suggest[libActiveCat] = arr; }
     inp.value = ""; saveLibrary(); rebuildLists(); renderLibEditor();
   }
+  // ---- player tracking helpers ----
+  function renderRosterList() {
+    var list = document.getElementById("rosterList");
+    if (!list) return;
+    if (!settings.roster || !settings.roster.length) {
+      list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0">No players yet.</div>';
+      return;
+    }
+    list.innerHTML = settings.roster.map(function(p) {
+      return '<div class="roster-player">' +
+        '<span class="roster-jersey">#' + esc(p.jersey) + '</span>' +
+        '<span class="roster-name">' + esc(p.name) + '</span>' +
+        '<span class="roster-pos">' + esc(p.pos) + '</span>' +
+        '<button class="cancel" style="margin:0;font-size:18px;line-height:1;padding:0 6px;height:auto" data-del-player="' + esc(p.id) + '">&times;</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function populatePlayerDropdowns() {
+    var roster = settings.roster || [];
+    var allSels = [
+      ['fPasser',   ['QB', 'Other']],
+      ['fReceiver', ['WR', 'TE', 'RB', 'Other']],
+      ['fRusher',   ['RB', 'QB', 'WR', 'Other']]
+    ];
+    allSels.forEach(function(pair) {
+      var el = document.getElementById(pair[0]);
+      if (!el) return;
+      var preferred = pair[1];
+      var sorted = roster.slice().sort(function(a, b) {
+        var ai = preferred.indexOf(a.pos), bi = preferred.indexOf(b.pos);
+        ai = ai === -1 ? 99 : ai; bi = bi === -1 ? 99 : bi;
+        return ai !== bi ? ai - bi : (Number(a.jersey) || 0) - (Number(b.jersey) || 0);
+      });
+      var prev = el.value;
+      el.innerHTML = '<option value="">— select —</option>' +
+        sorted.map(function(p) {
+          return '<option value="' + esc(p.id) + '">#' + esc(p.jersey) + ' ' + esc(p.name) + ' (' + esc(p.pos) + ')</option>';
+        }).join('');
+      el.value = prev;
+    });
+  }
+
+  function updatePlayerFieldVisibility() {
+    var typeVal = draft.type || '';
+    var track = settings.trackPlayers && (settings.roster || []).length > 0;
+    var showPass = track && typeVal === 'pass';
+    var showRun  = track && typeVal === 'run';
+    var prEl = document.getElementById('passerRow');
+    var ruEl = document.getElementById('rusherRow');
+    if (prEl) prEl.style.display = showPass ? '' : 'none';
+    if (ruEl) ruEl.style.display = showRun  ? '' : 'none';
+  }
+
+  function importHudlRosterCSV(text) {
+    var lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return 0;
+    var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/^"|"$/g, '').toLowerCase(); });
+    var iFirst = -1, iLast = -1, iName = -1, iJersey = -1, iPos = -1;
+    headers.forEach(function(h, i) {
+      if (h === 'first name' || h === 'firstname') iFirst = i;
+      else if (h === 'last name' || h === 'lastname') iLast = i;
+      else if (h === 'name' || h === 'player' || h === 'full name') iName = i;
+      if (h === 'number' || h === 'jersey' || h === 'jersey number' || h === '#' || h === 'no.') iJersey = i;
+      if (h === 'position' || h === 'pos') iPos = i;
+    });
+    var added = 0;
+    for (var i = 1; i < lines.length; i++) {
+      var cells = lines[i].split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+      var name = '';
+      if (iName >= 0) name = cells[iName] || '';
+      else if (iFirst >= 0 || iLast >= 0) name = ((cells[iFirst] || '') + ' ' + (cells[iLast] || '')).trim();
+      var jersey = iJersey >= 0 ? (cells[iJersey] || '') : '';
+      var pos = iPos >= 0 ? (cells[iPos] || 'Other') : 'Other';
+      if (!name) continue;
+      var knownPos = ['QB','RB','WR','TE','OL','K'];
+      var normPos = pos.toUpperCase();
+      if (knownPos.indexOf(normPos) === -1) normPos = 'Other';
+      var dup = (settings.roster || []).some(function(p) { return p.name.toLowerCase() === name.toLowerCase() && p.jersey === jersey; });
+      if (dup) continue;
+      if (!settings.roster) settings.roster = [];
+      settings.roster.push({id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2), name: name, jersey: jersey, pos: normPos});
+      added++;
+    }
+    return added;
+  }
+
+  function buildPlayersReport(plays) {
+    if (!settings.trackPlayers || !(settings.roster || []).length) {
+      return '<div class="report-empty">Enable "Track players" in Settings and add a roster to see player stats.</div>';
+    }
+    var rosterMap = {};
+    (settings.roster || []).forEach(function(p) { rosterMap[p.id] = p; });
+    var passerMap = {};
+    var receiverMap = {};
+    var rusherMap = {};
+    plays.forEach(function(p) {
+      if (p.passer && rosterMap[p.passer]) {
+        if (!passerMap[p.passer]) passerMap[p.passer] = {id: p.passer, att: 0, yds: 0, eff: 0};
+        passerMap[p.passer].att++;
+        passerMap[p.passer].yds += Number(p.yards) || 0;
+        if (p.success) passerMap[p.passer].eff++;
+      }
+      if (p.receiver && rosterMap[p.receiver]) {
+        if (!receiverMap[p.receiver]) receiverMap[p.receiver] = {id: p.receiver, tgts: 0, yds: 0, eff: 0};
+        receiverMap[p.receiver].tgts++;
+        receiverMap[p.receiver].yds += Number(p.yards) || 0;
+        if (p.success) receiverMap[p.receiver].eff++;
+      }
+      if (p.rusher && rosterMap[p.rusher]) {
+        if (!rusherMap[p.rusher]) rusherMap[p.rusher] = {id: p.rusher, car: 0, yds: 0, eff: 0};
+        rusherMap[p.rusher].car++;
+        rusherMap[p.rusher].yds += Number(p.yards) || 0;
+        if (p.success) rusherMap[p.rusher].eff++;
+      }
+    });
+    function pRow(stat, fields) {
+      var pl = rosterMap[stat.id];
+      var n = stat.att || stat.tgts || stat.car || 1;
+      var rate = Math.round(100 * stat.eff / n);
+      return '<tr>' +
+        '<td><span class="pnum">#' + esc(pl.jersey) + '</span></td>' +
+        '<td><b>' + esc(pl.name) + '</b><br><span style="font-size:11px;color:var(--muted)">' + esc(pl.pos) + '</span></td>' +
+        fields.map(function(f) { return '<td style="font-family:var(--num)">' + f + '</td>'; }).join('') +
+        '<td><div style="display:flex;align-items:center;gap:6px"><div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;width:48px;flex:none"><div style="height:100%;width:' + rate + '%;background:var(--royal-2)"></div></div><b>' + rate + '%</b></div></td>' +
+      '</tr>';
+    }
+    var html = '';
+    var passers = Object.keys(passerMap).map(function(k){ return passerMap[k]; });
+    if (passers.length) {
+      passers.sort(function(a,b){ return (b.eff/b.att) - (a.eff/a.att); });
+      html += '<div class="player-section-head">Passers</div>';
+      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Att</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
+      passers.forEach(function(s) {
+        var avg = (s.yds / s.att).toFixed(1);
+        html += pRow(s, [s.att, s.yds, avg]);
+      });
+      html += '</tbody></table></div>';
+    }
+    var receivers = Object.keys(receiverMap).map(function(k){ return receiverMap[k]; });
+    if (receivers.length) {
+      receivers.sort(function(a,b){ return (b.eff/b.tgts) - (a.eff/a.tgts); });
+      html += '<div class="player-section-head">Receivers</div>';
+      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Tgts</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
+      receivers.forEach(function(s) {
+        var avg = (s.yds / s.tgts).toFixed(1);
+        html += pRow(s, [s.tgts, s.yds, avg]);
+      });
+      html += '</tbody></table></div>';
+    }
+    var rushers = Object.keys(rusherMap).map(function(k){ return rusherMap[k]; });
+    if (rushers.length) {
+      rushers.sort(function(a,b){ return (b.eff/b.car) - (a.eff/a.car); });
+      html += '<div class="player-section-head">Rushers</div>';
+      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Car</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
+      rushers.forEach(function(s) {
+        var avg = (s.yds / s.car).toFixed(1);
+        html += pRow(s, [s.car, s.yds, avg]);
+      });
+      html += '</tbody></table></div>';
+    }
+    var callPlayerMap = {};
+    plays.forEach(function(p) {
+      var callKey = (p.call || '').trim();
+      if (!callKey) return;
+      var playerId = p.passer || p.rusher || p.receiver;
+      if (!playerId || !rosterMap[playerId]) return;
+      var key = callKey + '|||' + playerId;
+      if (!callPlayerMap[key]) callPlayerMap[key] = {call: callKey, id: playerId, n: 0, yds: 0, eff: 0};
+      callPlayerMap[key].n++;
+      callPlayerMap[key].yds += Number(p.yards) || 0;
+      if (p.success) callPlayerMap[key].eff++;
+    });
+    var byCal = {};
+    Object.keys(callPlayerMap).forEach(function(k) {
+      var item = callPlayerMap[k];
+      if (!byCal[item.call]) byCal[item.call] = [];
+      byCal[item.call].push(item);
+    });
+    var callKeys = Object.keys(byCal).filter(function(k) {
+      return byCal[k].reduce(function(a,b){ return a + b.n; }, 0) >= 2;
+    });
+    if (callKeys.length) {
+      html += '<div class="player-section-head">By play call</div>';
+      callKeys.sort().forEach(function(callKey) {
+        var items = byCal[callKey];
+        items.sort(function(a,b){ return (b.eff/b.n) - (a.eff/a.n); });
+        html += '<div style="margin-bottom:14px">';
+        html += '<div style="font-size:13px;font-weight:600;margin-bottom:4px">' + esc(callKey) + '</div>';
+        html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Plays</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
+        items.forEach(function(s) {
+          var avg = (s.yds / s.n).toFixed(1);
+          html += pRow(s, [s.n, s.yds, avg]);
+        });
+        html += '</tbody></table></div></div>';
+      });
+    }
+    if (!html) {
+      return '<div class="report-empty">No player data logged yet this game.</div>';
+    }
+    return html;
+  }
+
   function renderSettingsPanel(){
     document.getElementById("stTeamName").value = settings.teamName||"";
     document.getElementById("stCoachName").value = settings.coachName||"";
@@ -1200,6 +1472,10 @@
     document.getElementById("stEff7v7Plays").value = settings.eff7v7Plays||4;
     var eff7Box = document.getElementById("stEff7v7Mode");
     [].forEach.call(eff7Box.querySelectorAll(".opt-card"), function(c){ c.classList.toggle("on", c.getAttribute("data-v") === (settings.eff7v7Mode||"pace")); });
+    // player tracking
+    var stgTP = document.getElementById('stgTrackPlayers');
+    if (stgTP) stgTP.checked = !!settings.trackPlayers;
+    renderRosterList();
     // tags and library
     renderSettingsTags();
     renderLibEditor();
@@ -1272,7 +1548,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.5", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.7", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -1553,7 +1829,8 @@
       if(after) after();
     });
   }
-  wireSeg("qtr","qtr"); wireSeg("hash","hash"); wireSeg("ptype","type");
+  wireSeg("qtr","qtr"); wireSeg("hash","hash");
+  wireSeg("ptype","type", function(){ updatePlayerFieldVisibility(); });
   wireSeg("down","down", function(){ refreshAutoEff(); update7v7Hint(); paintPuntBtn(); });
 
   // ---- Punt button (4th down, standard mode only) ----
@@ -1820,6 +2097,9 @@
     draft.motionOn = false; document.getElementById("motion").value = ""; paintMotion();
     draft.yardSign = 1; paintYardSign();
     draft.note = ""; updateNotesBtn();
+    document.getElementById('fPasser').value = lastPasser;
+    document.getElementById('fReceiver').value = lastReceiver;
+    document.getElementById('fRusher').value = lastRusher;
     if(wasEditing) restoreFromLastPlay();
     document.getElementById("effHint").textContent = "Auto-checked when the play gains enough";
     refreshAutoEff(); refreshAutoFirstDown();
@@ -1835,6 +2115,13 @@
     var front = (currentMode === "7v7") ? "" : titleCaseWords(document.getElementById("front").value.trim());
     var coverage = titleCaseWords(document.getElementById("coverage").value.trim());
 
+    var fPasser   = settings.trackPlayers ? (document.getElementById('fPasser').value   || '') : '';
+    var fReceiver = settings.trackPlayers ? (document.getElementById('fReceiver').value || '') : '';
+    var fRusher   = settings.trackPlayers ? (document.getElementById('fRusher').value   || '') : '';
+    if(fPasser)   lastPasser   = fPasser;
+    if(fReceiver) lastReceiver = fReceiver;
+    if(fRusher)   lastRusher   = fRusher;
+
     if(editingId){
       var ep = plays.find(function(x){ return x.id === editingId; });
       if(ep){
@@ -1842,6 +2129,7 @@
         ep.yl=getYL(); ep.hash=draft.hash; ep.type=draft.type;
         ep.form=form; ep.call=call; ep.motion=motion; ep.front=front; ep.coverage=coverage; ep.yards=yards;
         ep.tags=draft.tags.slice(); ep.success=draft.effective; ep.auto=!draft.effTouched; ep.note=draft.note;
+        ep.passer=fPasser; ep.receiver=fReceiver; ep.rusher=fRusher;
       }
       learn(form, call, motion, front, coverage);
       finishEntry(false);
@@ -1860,6 +2148,7 @@
       yl: getYL(), hash: draft.hash, type: draft.type,
       form: form, call: call, motion: motion, front: front, coverage: coverage, yards: yards,
       tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note,
+      passer: fPasser, receiver: fReceiver, rusher: fRusher,
       simGame: _isSim || undefined
     };
     if(isScrim){ var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; }
@@ -2114,6 +2403,11 @@
         }
         var dir = p.yards>0?"up":(p.yards<0?"down":"flat"); var sign = p.yards>0?"+":"";
         var tags = p.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join("");
+        var _rMap = {}; (settings.roster||[]).forEach(function(r){ _rMap[r.id]=r; });
+        var playerNote = '';
+        if(p.passer && _rMap[p.passer]) playerNote += '#'+esc(_rMap[p.passer].jersey)+' '+esc(_rMap[p.passer].name);
+        if(p.receiver && _rMap[p.receiver]) playerNote += (playerNote?' → ':'')+  '#'+esc(_rMap[p.receiver].jersey)+' '+esc(_rMap[p.receiver].name);
+        if(p.rusher && _rMap[p.rusher]) playerNote += '#'+esc(_rMap[p.rusher].jersey)+' '+esc(_rMap[p.rusher].name);
         return '<tr class="'+p.type+'" data-id="'+p.id+'">'+
           '<td><b style="font-family:var(--num)">'+(i+1)+'</b></td>'+
           '<td>'+(p.mode==="scrimmage" ? esc(p.series||"") : esc(p.qtr))+'</td>'+
@@ -2121,7 +2415,7 @@
           '<td>'+(p.yl!==""?esc(p.yl):"&ndash;")+'<span style="color:var(--muted);font-size:11px"> '+esc(p.hash)+'</span></td>'+
           '<td><span class="pill '+p.type+'">'+(p.type==="run"?"RUN":"PASS")+'</span></td>'+
           '<td>'+esc(p.form||"&mdash;")+(p.motion?'<div class="mtag">+ '+esc(p.motion)+' motion</div>':'')+(p.front?'<div class="mtag" style="color:var(--muted)">front: '+esc(p.front)+'</div>':'')+(p.coverage?'<div class="mtag" style="color:var(--muted)">cov: '+esc(p.coverage)+'</div>':'')+'</td>'+
-          '<td>'+esc(p.call||"&mdash;")+'</td>'+
+          '<td>'+esc(p.call||"&mdash;")+(playerNote?'<div class="mtag" style="color:var(--royal-2)">'+playerNote+'</div>':'')+'</td>'+
           '<td><span class="res '+dir+'">'+sign+p.yards+'</span></td>'+
           '<td><button class="succ '+(p.success?"y":"n")+'" data-id="'+p.id+'">'+(p.success?"\u2713":"\u2717")+'</button></td>'+
           '<td><div class="tagrow">'+(tags||'<span style="color:var(--muted)">&mdash;</span>')+'</div></td>'+
@@ -2197,6 +2491,7 @@
     savePreClearSnapshot();
     saveCurrentToSeason();
     currentGameId = newGameId();
+    lastPasser = ''; lastReceiver = ''; lastRusher = '';
     currentMode = mode;
     var today = todayStr();
     plays = []; meta = {opp:"", date:today};
@@ -2220,6 +2515,7 @@
     savePreClearSnapshot();
     saveCurrentToSeason();
     currentGameId = newGameId();
+    lastPasser = ''; lastReceiver = ''; lastRusher = '';
     plays = []; meta = {opp:"", date:""};
     document.getElementById("opp").value=""; document.getElementById("gdate").value="";
     save(); render();
@@ -2264,6 +2560,57 @@
   document.getElementById("settingsBack").addEventListener("click", closeSettings);
   [].forEach.call(document.querySelectorAll(".stnav-item"), function(btn){
     btn.addEventListener("click", function(){ switchSettingsSection(btn.getAttribute("data-sec")); });
+  });
+
+  // ---- player tracking settings handlers ----
+  document.getElementById('stgTrackPlayers').addEventListener('change', function() {
+    settings.trackPlayers = this.checked;
+    save();
+    populatePlayerDropdowns();
+    updatePlayerFieldVisibility();
+  });
+
+  document.getElementById('addRosterPlayerBtn').addEventListener('click', function() {
+    var name = document.getElementById('rosterName').value.trim();
+    var jersey = document.getElementById('rosterJersey').value.trim();
+    var pos = document.getElementById('rosterPos').value;
+    if (!name) { alert('Enter a player name.'); return; }
+    if (!settings.roster) settings.roster = [];
+    settings.roster.push({id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2), name: name, jersey: jersey, pos: pos});
+    document.getElementById('rosterName').value = '';
+    document.getElementById('rosterJersey').value = '';
+    save();
+    renderRosterList();
+    populatePlayerDropdowns();
+  });
+
+  document.getElementById('rosterList').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-del-player]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-del-player');
+    settings.roster = (settings.roster || []).filter(function(p) { return p.id !== id; });
+    save();
+    renderRosterList();
+    populatePlayerDropdowns();
+    updatePlayerFieldVisibility();
+  });
+
+  document.getElementById('importRosterBtn').addEventListener('click', function() {
+    document.getElementById('rosterCsvInput').click();
+  });
+  document.getElementById('rosterCsvInput').addEventListener('change', function() {
+    var file = this.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var added = importHudlRosterCSV(e.target.result);
+      save();
+      renderRosterList();
+      populatePlayerDropdowns();
+      alert('Imported ' + added + ' player' + (added === 1 ? '' : 's') + ' from CSV.');
+    };
+    reader.readAsText(file);
+    this.value = '';
   });
   [].forEach.call(document.querySelectorAll(".stSaveAlias"), function(btn){
     btn.addEventListener("click", function(){ document.getElementById("stSave").click(); });
@@ -2498,19 +2845,21 @@
   function csvEsc(c){ c=String(c==null?"":c); return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }
   function exportGameCSV(list, label){
     if(!list.length){ alert("No plays to export."); return; }
-    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes"];
+    var rLookup = {}; (settings.roster||[]).forEach(function(p){ rLookup[p.id]='#'+p.jersey+' '+p.name; });
+    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes","Passer","Receiver","Rusher"];
     var lines = [head.join(",")];
     list.forEach(function(p,i){
-      lines.push([i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||""].map(csvEsc).join(","));
+      lines.push([i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||"",rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
     });
     dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+".csv", lines.join("\n"));
   }
   function exportGameHudl(list, label){
     if(!list.length){ alert("No plays to export."); return; }
-    var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
+    var rLookup = {}; (settings.roster||[]).forEach(function(p){ rLookup[p.id]='#'+p.jersey+' '+p.name; });
+    var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF","PASSER","RECEIVER","RUSHER"];
     var lines = [head.join(",")];
     list.forEach(function(p,i){
-      lines.push([i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
+      lines.push([i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N"),rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
     });
     dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+"-hudl.csv", lines.join("\n"));
   }
@@ -2751,6 +3100,7 @@
     document.getElementById("rbHash").classList.toggle("on", reportMode === "hash");
     document.getElementById("rbSeries").classList.toggle("on", reportMode === "series");
     document.getElementById("rbNotes").classList.toggle("on", reportMode === "notes");
+    document.getElementById("rbPlayers").classList.toggle("on", reportMode === "players");
 
     var n = plays.length;
     var wrap = document.getElementById("reportTableWrap");
@@ -2803,6 +3153,12 @@
       return;
     }
 
+    if(reportMode === "players"){
+      sum.innerHTML = "Per-player stats for passers, receivers &amp; rushers";
+      wrap.innerHTML = buildPlayersReport(plays);
+      return;
+    }
+
     if(reportMode === "call"){
       var groups = groupByCall().length;
       sum.innerHTML = groups + " play call" + (groups===1?"":"s") +
@@ -2844,6 +3200,7 @@
   document.getElementById("rbHash").addEventListener("click", function(){ reportMode="hash"; detailCall=null; renderReport(); });
   document.getElementById("rbSeries").addEventListener("click", function(){ reportMode="series"; detailCall=null; renderReport(); });
   document.getElementById("rbNotes").addEventListener("click", function(){ reportMode="notes"; detailCall=null; renderReport(); });
+  document.getElementById("rbPlayers").addEventListener("click", function(){ reportMode="players"; detailCall=null; renderReport(); });
   document.getElementById("reportTableWrap").addEventListener("click", function(e){
     // drill into a play call group
     if(reportMode === "call" && !detailCall){
@@ -3391,7 +3748,7 @@
   bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
 
   // ---- boot ----
-  load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); updateLastBackupLabel(); });
+  load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); updateLastBackupLabel(); populatePlayerDropdowns(); updatePlayerFieldVisibility(); });
 
   // ---- dismiss the startup splash when the user taps Continue ----
   (function(){

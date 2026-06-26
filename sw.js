@@ -1,5 +1,5 @@
 // Service worker — caches the app so it opens with no internet.
-var CACHE = "play-chart-v65";
+var CACHE = "play-chart-v67";
 var FILES = ["./", "index.html", "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", function(e){
