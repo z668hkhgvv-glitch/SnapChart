@@ -445,7 +445,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.11</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.12</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1279,6 +1279,7 @@
     nameBtn.style.color      = !byNum ? '#fff'         : '';
     nameBtn.style.borderColor= !byNum ? 'var(--royal)' : '';
   }
+  var editingPlayerId = null;
   function renderRosterList() {
     var list = document.getElementById("rosterList");
     if (!list) return;
@@ -1288,11 +1289,21 @@
       return;
     }
     list.innerHTML = sortedRoster().map(function(p) {
+      if (p.id === editingPlayerId) {
+        return '<div class="roster-player" style="flex-wrap:wrap;gap:4px">' +
+          '<input id="editJersey" class="field" value="' + esc(p.jersey) + '" placeholder="#" style="width:48px;height:34px;font-size:13px;padding:0 6px">' +
+          '<input id="editName" class="field" value="' + esc(p.name) + '" placeholder="Name" style="flex:1;min-width:80px;height:34px;font-size:13px;padding:0 8px">' +
+          '<input id="editPos" class="field" value="' + esc(p.pos) + '" placeholder="Pos" style="width:44px;height:34px;font-size:13px;padding:0 6px">' +
+          '<button class="btn-primary" data-save-player="' + esc(p.id) + '" style="height:34px;padding:0 12px;font-size:12px;flex-shrink:0">Save</button>' +
+          '<button class="cancel" data-cancel-edit style="margin:0;height:34px;padding:0 8px;flex-shrink:0">✕</button>' +
+        '</div>';
+      }
       return '<div class="roster-player">' +
         '<span class="roster-jersey">#' + esc(p.jersey) + '</span>' +
         '<span class="roster-name">' + esc(p.name) + '</span>' +
         '<span class="roster-pos">' + esc(p.pos) + '</span>' +
-        '<button class="cancel" style="margin:0;font-size:18px;line-height:1;padding:0 6px;height:auto" data-del-player="' + esc(p.id) + '">&times;</button>' +
+        '<button class="lib-edit-btn" data-edit-player="' + esc(p.id) + '" title="Edit" style="flex-shrink:0">✎</button>' +
+        '<button class="cancel" style="margin:0;font-size:18px;line-height:1;padding:0 6px;height:auto;flex-shrink:0" data-del-player="' + esc(p.id) + '">&times;</button>' +
       '</div>';
     }).join('');
   }
@@ -1754,6 +1765,64 @@
       }
     }
 
+  // Player stats (only when tracking enabled and roster exists)
+  if (settings && settings.trackPlayers && settings.roster && settings.roster.length) {
+    var rosterMap = {};
+    settings.roster.forEach(function(r){ rosterMap[r.id] = r; });
+
+    var passerStats = {}, receiverStats = {}, rusherStats = {};
+    playsArr.forEach(function(p) {
+      if (p.passer && rosterMap[p.passer]) {
+        if (!passerStats[p.passer]) passerStats[p.passer] = {id:p.passer, n:0, yds:0, eff:0};
+        passerStats[p.passer].n++; passerStats[p.passer].yds += Number(p.yards)||0;
+        if (p.success) passerStats[p.passer].eff++;
+      }
+      if (p.receiver && rosterMap[p.receiver]) {
+        if (!receiverStats[p.receiver]) receiverStats[p.receiver] = {id:p.receiver, n:0, yds:0, eff:0};
+        receiverStats[p.receiver].n++; receiverStats[p.receiver].yds += Number(p.yards)||0;
+        if (p.success) receiverStats[p.receiver].eff++;
+      }
+      if (p.rusher && rosterMap[p.rusher]) {
+        if (!rusherStats[p.rusher]) rusherStats[p.rusher] = {id:p.rusher, n:0, yds:0, eff:0};
+        rusherStats[p.rusher].n++; rusherStats[p.rusher].yds += Number(p.yards)||0;
+        if (p.success) rusherStats[p.rusher].eff++;
+      }
+    });
+
+    function playerStatRow(stat, countLabel) {
+      var pl = rosterMap[stat.id];
+      var rate = stat.n ? Math.round(100 * stat.eff / stat.n) : 0;
+      var avgY = stat.n ? (stat.yds / stat.n).toFixed(1) : '0.0';
+      return '<div class="rpt-row">' +
+        '<div class="rpt-label"><b>#' + esc(pl.jersey) + '</b> ' + esc(pl.name) +
+          (pl.pos ? ' <span style="font-size:11px;color:var(--slate)">' + esc(pl.pos) + '</span>' : '') + '</div>' +
+        '<div class="rpt-stats">' +
+          '<span class="rpt-n">' + stat.n + ' ' + countLabel + '</span>' +
+          '<span class="rpt-avg">' + stat.yds + ' yds &middot; ' + avgY + ' avg</span>' +
+          '<span class="rpt-eff" style="color:' + (rate >= 50 ? '#15803d' : '#b91c1c') + '">' + rate + '% eff</span>' +
+        '</div>' +
+        '<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:' + rate + '%"></div></div>' +
+      '</div>';
+    }
+
+    var hasPStats = Object.keys(passerStats).length || Object.keys(receiverStats).length || Object.keys(rusherStats).length;
+    if (hasPStats) {
+      html += secHead('Player Stats');
+      if (Object.keys(passerStats).length) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);margin:8px 0 6px">Passers</div>';
+        html += Object.values(passerStats).sort(function(a,b){ return b.yds-a.yds; }).map(function(s){ return playerStatRow(s,'att'); }).join('');
+      }
+      if (Object.keys(receiverStats).length) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);margin:10px 0 6px">Receivers</div>';
+        html += Object.values(receiverStats).sort(function(a,b){ return b.yds-a.yds; }).map(function(s){ return playerStatRow(s,'rec'); }).join('');
+      }
+      if (Object.keys(rusherStats).length) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);margin:10px 0 6px">Rushers</div>';
+        html += Object.values(rusherStats).sort(function(a,b){ return b.yds-a.yds; }).map(function(s){ return playerStatRow(s,'car'); }).join('');
+      }
+    }
+  }
+
     html += '</div>';
     return html;
   }
@@ -1872,7 +1941,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.11", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.12", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2915,6 +2984,40 @@
   });
 
   document.getElementById('rosterList').addEventListener('click', function(e) {
+    // Edit player
+    var editBtn = e.target.closest('[data-edit-player]');
+    if (editBtn) {
+      editingPlayerId = editBtn.getAttribute('data-edit-player');
+      renderRosterList();
+      var inp = document.getElementById('editName'); if (inp) inp.focus();
+      return;
+    }
+    // Save player edit
+    var saveBtn = e.target.closest('[data-save-player]');
+    if (saveBtn) {
+      var pid = saveBtn.getAttribute('data-save-player');
+      var jersey = (document.getElementById('editJersey')||{}).value || '';
+      var name = ((document.getElementById('editName')||{}).value || '').trim();
+      var pos = ((document.getElementById('editPos')||{}).value || '').trim();
+      if (name) {
+        for (var ri = 0; ri < settings.roster.length; ri++) {
+          if (settings.roster[ri].id === pid) {
+            settings.roster[ri] = { id: pid, name: name, jersey: jersey.replace(/^#/,''), pos: pos };
+            break;
+          }
+        }
+        saveSettings();
+      }
+      editingPlayerId = null;
+      renderRosterList();
+      return;
+    }
+    // Cancel edit
+    if (e.target.closest('[data-cancel-edit]')) {
+      editingPlayerId = null;
+      renderRosterList();
+      return;
+    }
     var btn = e.target.closest('[data-del-player]');
     if (!btn) return;
     var id = btn.getAttribute('data-del-player');
@@ -3374,7 +3477,45 @@
         '<td><div class="tagrow">'+(tags||'<span style="color:var(--muted)">&mdash;</span>')+'</div></td>'+
       '</tr>';
     }).join("");
-    return '<div class="table-scroll"><table><thead><tr>'+
+  // By Player breakdown (if player tracking enabled)
+  var playerSection = '';
+  if (settings && settings.trackPlayers && settings.roster && settings.roster.length) {
+    var rMap = {};
+    settings.roster.forEach(function(r){ rMap[r.id] = r; });
+    var psByPlayer = {};
+    subset.forEach(function(p) {
+      function addStat(pid, role) {
+        if (!pid || !rMap[pid]) return;
+        var k = pid + '|' + role;
+        if (!psByPlayer[k]) psByPlayer[k] = {id:pid, role:role, n:0, yds:0, eff:0};
+        psByPlayer[k].n++; psByPlayer[k].yds += Number(p.yards)||0;
+        if (p.success) psByPlayer[k].eff++;
+      }
+      addStat(p.passer, 'Passer'); addStat(p.receiver, 'Receiver'); addStat(p.rusher, 'Rusher');
+    });
+    var playerRows = Object.values(psByPlayer).sort(function(a,b){
+      var ae = a.n ? a.eff/a.n : 0, be = b.n ? b.eff/b.n : 0; return be-ae;
+    });
+    if (playerRows.length) {
+      playerSection = '<div style="margin-bottom:14px"><div style="font-family:var(--num);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--royal);padding:4px 0 5px;border-bottom:2px solid var(--chalk,#E8EEF9);margin-bottom:10px">By Player</div>' +
+        playerRows.map(function(s) {
+          var pl = rMap[s.id];
+          var rate = s.n ? Math.round(100*s.eff/s.n) : 0;
+          var avgY = s.n ? (s.yds/s.n).toFixed(1) : '0.0';
+          return '<div class="rpt-row">' +
+            '<div class="rpt-label"><b>#' + esc(pl.jersey) + '</b> ' + esc(pl.name) +
+              ' <span style="font-size:11px;color:var(--slate)">' + s.role + '</span></div>' +
+            '<div class="rpt-stats">' +
+              '<span class="rpt-n">' + s.n + ' plays</span>' +
+              '<span class="rpt-avg">' + s.yds + ' yds &middot; ' + avgY + ' avg</span>' +
+              '<span class="rpt-eff" style="color:' + (rate >= 50 ? '#15803d' : '#b91c1c') + '">' + rate + '% eff</span>' +
+            '</div>' +
+            '<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:' + rate + '%"></div></div>' +
+          '</div>';
+        }).join('') + '</div>';
+    }
+  }
+  return playerSection + '<div class="table-scroll"><table><thead><tr>'+
       '<th>Snap</th><th>Qtr</th><th>Dn &amp; Dist</th><th>Ball</th><th>Type</th>'+
       '<th>Formation</th><th>Yds</th><th>Effective</th><th>Result</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
