@@ -470,7 +470,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.13</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.14</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -688,6 +688,7 @@
     <button id="rbPlayers" class="rbtn">Players</button>
     <button id="rbStats" class="rbtn">Game Stats</button>
     <button id="rbHeat" class="rbtn">Heat Map</button>
+    <button id="rbRedZone" class="rbtn">Red Zone</button>
   </div>
 
   <div class="report-summary" id="reportSummary"></div>
@@ -3613,6 +3614,151 @@
       '</div>';
     }).join("");
   }
+  function buildRedZone(playsArr) {
+    function posFromYl(yl) {
+      var n = Number(yl);
+      if (yl === "" || yl == null || isNaN(n)) return null;
+      return n >= 0 ? n : 100 + n;
+    }
+    function pct(s, n) { return n ? Math.round(100*s/n) + '%' : '—'; }
+    function signYds(y, n) { return n ? (y/n > 0 ? '+' : '') + (y/n).toFixed(1) : '—'; }
+    function card(val, lbl) {
+      return '<div style="background:var(--chalk,#F1F5F9);border-radius:10px;padding:12px 8px;text-align:center">' +
+        '<div style="font-family:var(--num,Oswald);font-size:22px;font-weight:700;color:var(--royal,#16317F);line-height:1.1">' + val + '</div>' +
+        '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--slate,#6B7280);margin-top:4px">' + lbl + '</div>' +
+        '</div>';
+    }
+    function grid(cards, cols) {
+      return '<div style="display:grid;grid-template-columns:repeat(' + (cols||4) + ',1fr);gap:8px;margin-bottom:8px">' + cards.join('') + '</div>';
+    }
+    function secHead(title) {
+      return '<div style="font-family:var(--num,Oswald);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--royal,#16317F);padding:4px 0 5px;border-bottom:2px solid var(--royal-bg,#E8EEF9);margin:18px 0 10px">' + title + '</div>';
+    }
+    function row(label, n, succ, yards) {
+      var ep = n ? Math.round(100*succ/n) : 0;
+      var color = ep >= 50 ? '#15803d' : '#b91c1c';
+      var avg = n ? (yards/n).toFixed(1) : '0.0';
+      return '<div class="rpt-row">' +
+        '<div class="rpt-label">' + label + '</div>' +
+        '<div class="rpt-stats">' +
+          '<span class="rpt-n">' + n + ' play' + (n !== 1 ? 's' : '') + '</span>' +
+          '<span class="rpt-avg">' + (n && yards/n > 0 ? '+' : '') + avg + ' yds/play</span>' +
+          '<span class="rpt-eff" style="color:' + color + '">' + ep + '% effective</span>' +
+        '</div>' +
+        '<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:' + ep + '%"></div></div>' +
+        '</div>';
+    }
+
+    var rzPlays = playsArr.filter(function(p) {
+      var pos = posFromYl(p.yl);
+      return pos !== null && pos >= 80 && p.type !== 'punt';
+    });
+
+    if (!rzPlays.length) {
+      return '<div style="padding:28px 16px;text-align:center;color:var(--muted,#6B7280)">' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:6px">No red zone plays yet</div>' +
+        '<div style="font-size:13px">Red zone = inside the opponent\'s 20 yard line.<br>Log plays with the ball-on field set inside their 20.</div>' +
+        '</div>';
+    }
+
+    var total = rzPlays.length;
+    var successes = rzPlays.filter(function(p){return p.success;}).length;
+    var effPct = total ? Math.round(100*successes/total) : 0;
+    var totalYds = rzPlays.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+
+    var runs = rzPlays.filter(function(p){return p.type==='run';});
+    var passes = rzPlays.filter(function(p){return p.type==='pass';});
+    var runSucc = runs.filter(function(p){return p.success;}).length;
+    var passSucc = passes.filter(function(p){return p.success;}).length;
+    var runYds = runs.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+    var passYds = passes.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+
+    var szPlays = rzPlays.filter(function(p){var pos=posFromYl(p.yl);return pos>=80&&pos<=89;});
+    var drPlays = rzPlays.filter(function(p){var pos=posFromYl(p.yl);return pos>=90;});
+    var szSucc = szPlays.filter(function(p){return p.success;}).length;
+    var drSucc = drPlays.filter(function(p){return p.success;}).length;
+    var szYds = szPlays.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+    var drYds = drPlays.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+
+    var downMap = {};
+    rzPlays.forEach(function(p){
+      var d = String(p.down||'');
+      if (!d) return;
+      if (!downMap[d]) downMap[d]={count:0,succ:0,yards:0};
+      downMap[d].count++; if(p.success) downMap[d].succ++; downMap[d].yards+=Number(p.yards)||0;
+    });
+
+    var hashData = {L:{count:0,succ:0,yards:0},M:{count:0,succ:0,yards:0},R:{count:0,succ:0,yards:0}};
+    var hashLabels = {L:'Left Hash',M:'Middle',R:'Right Hash'};
+    rzPlays.forEach(function(p){
+      var h=p.hash; if(hashData[h]){hashData[h].count++;if(p.success)hashData[h].succ++;hashData[h].yards+=Number(p.yards)||0;}
+    });
+
+    var callMap = {};
+    rzPlays.forEach(function(p){
+      var k=(p.call||'(no call)').trim();
+      if(!callMap[k]) callMap[k]={count:0,succ:0,yards:0};
+      callMap[k].count++;if(p.success)callMap[k].succ++;callMap[k].yards+=Number(p.yards)||0;
+    });
+    var topCalls = Object.keys(callMap).map(function(k){
+      var c=callMap[k];
+      return {name:k,count:c.count,succ:c.succ,yards:c.yards};
+    }).filter(function(c){return c.count>=2;}).sort(function(a,b){
+      var ae=a.count?a.succ/a.count:0,be=b.count?b.succ/b.count:0; return be-ae;
+    }).slice(0,8);
+
+    var runPct = total ? Math.round(100*runs.length/total) : 0;
+
+    var html = '';
+
+    html += secHead('Overview');
+    html += grid([
+      card(total, 'RZ Plays'),
+      card(effPct+'%', 'Success Rate'),
+      card(signYds(totalYds, total), 'Yds / Play'),
+      card(runs.length + ' / ' + passes.length, 'Run / Pass'),
+    ], 4);
+
+    html += secHead('By Zone');
+    html += row('Scoring Zone <span style="font-weight:400;font-size:12px">(Opp 20–11)</span>', szPlays.length, szSucc, szYds);
+    if (drPlays.length) html += row('Deep Red Zone <span style="font-weight:400;font-size:12px">(Opp 10–1)</span>', drPlays.length, drSucc, drYds);
+
+    html += secHead('Run vs Pass');
+    if (runs.length) html += row('Run', runs.length, runSucc, runYds);
+    if (passes.length) html += row('Pass', passes.length, passSucc, passYds);
+    html += '<div style="margin:4px 0 6px;background:#F3F4F6;border-radius:6px;height:8px;overflow:hidden;display:flex">' +
+      '<div style="width:' + runPct + '%;background:var(--royal,#16317F)"></div>' +
+      '<div style="flex:1;background:var(--royal-2,#1E44C4)"></div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted,#6B7280);margin-bottom:16px">' +
+        '<span>&#9632; Run ' + runPct + '%</span>' +
+        '<span>Pass ' + (100-runPct) + '% &#9632;</span>' +
+      '</div>';
+
+    var ordinals = {'1':'1st','2':'2nd','3':'3rd','4':'4th'};
+    var hasDownData = Object.keys(downMap).length > 0;
+    if (hasDownData) {
+      html += secHead('By Down');
+      ['1','2','3','4'].forEach(function(d) {
+        var bd = downMap[d]; if (!bd || !bd.count) return;
+        html += row(ordinals[d] + ' Down', bd.count, bd.succ, bd.yards);
+      });
+    }
+
+    html += secHead('By Hash');
+    ['L','M','R'].forEach(function(h) {
+      var hd = hashData[h]; if (!hd || !hd.count) return;
+      html += row(hashLabels[h], hd.count, hd.succ, hd.yards);
+    });
+
+    if (topCalls.length) {
+      html += secHead('Best Plays in Red Zone <span style="font-weight:400;font-size:11px;text-transform:none;letter-spacing:0">(2+ snaps)</span>');
+      topCalls.forEach(function(c){ html += row(esc(c.name), c.count, c.succ, c.yards); });
+    }
+
+    return html;
+  }
+
   function buildHeatMap(playsArr, filterType){
     var ZONES=[
       {label:"Own 1–20",  min:1,  max:20},
@@ -3702,6 +3848,7 @@
     document.getElementById("rbPlayers").classList.toggle("on", reportMode === "players");
     document.getElementById("rbStats").classList.toggle("on", reportMode === "stats");
     document.getElementById("rbHeat").classList.toggle("on", reportMode === "heatmap");
+    document.getElementById("rbRedZone").classList.toggle("on", reportMode === "redzone");
 
     var n = plays.length;
     var wrap = document.getElementById("reportTableWrap");
@@ -3756,6 +3903,12 @@
     if(reportMode === "heatmap"){
       sum.innerHTML = "Success rate &amp; average yards by field zone and hash";
       wrap.innerHTML = buildHeatMap(plays, hmFilter);
+      return;
+    }
+
+    if(reportMode === "redzone"){
+      sum.innerHTML = "Plays inside the opponent’s 20 yard line";
+      wrap.innerHTML = buildRedZone(plays);
       return;
     }
 
@@ -3816,6 +3969,7 @@
   document.getElementById("rbPlayers").addEventListener("click", function(){ reportMode="players"; detailCall=null; renderReport(); });
   document.getElementById("rbStats").addEventListener("click", function(){ reportMode="stats"; detailCall=null; renderReport(); });
   document.getElementById("rbHeat").addEventListener("click", function(){ reportMode="heatmap"; detailCall=null; hmFilter=""; renderReport(); });
+  document.getElementById("rbRedZone").addEventListener("click", function(){ reportMode="redzone"; detailCall=null; renderReport(); });
   document.getElementById("reportTableWrap").addEventListener("click", function(e){
     // heat map filter buttons
     var hmBtn = e.target.closest("[data-hmf]");
@@ -4137,6 +4291,7 @@
           '<div class="sg-stat"><div class="v">'+(avg>0?"+":"")+avg.toFixed(1)+'</div><div class="k">Yds/play</div></div>'+
           '<button class="gbtn" data-view="'+item.id+'">'+(open?"Hide":"View")+'</button>'+
           '<button class="gbtn" data-ghm="'+item.id+'">Heat Map</button>'+
+          '<button class="gbtn" data-grz="'+item.id+'">Red Zone</button>'+
           '<button class="gbtn" data-gcsv="'+item.id+'">CSV</button>'+
           '<button class="gbtn" data-ghudl="'+item.id+'">Hudl</button>'+
           del+
@@ -4340,6 +4495,19 @@
       hmModalPlays = gplays;
       document.getElementById("hmTitle").textContent = "Heat Map — "+gtitle;
       document.getElementById("hmBody").innerHTML = buildHeatMap(gplays, "");
+      document.getElementById("hmModal").hidden = false;
+      return;
+    }
+    var grz = e.target.closest("[data-grz]");
+    if(grz){
+      var gid = grz.getAttribute("data-grz");
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var gobj = gid === "current" ? {plays:plays, meta:meta} : (pool.find(function(g){return g.id===gid;})||{});
+      var gplays = gid === "current" ? plays : (gobj.plays||[]);
+      var gtitle = gid === "current" ? (meta.opp?"vs "+meta.opp:"Current game") : gameName(gobj);
+      hmModalPlays = null;
+      document.getElementById("hmTitle").textContent = "Red Zone — "+gtitle;
+      document.getElementById("hmBody").innerHTML = buildRedZone(gplays);
       document.getElementById("hmModal").hidden = false;
       return;
     }
