@@ -409,6 +409,13 @@
   .roster-jersey{font-family:var(--num);font-weight:700;font-size:15px;color:var(--royal);min-width:28px}
   .roster-name{flex:1;font-size:14px}
   .roster-pos{font-size:12px;color:var(--muted);background:var(--royal-bg);border-radius:4px;padding:1px 6px}
+
+  /* ---- Player report card rows ---- */
+  .rpt-row { background:#fff; border:1px solid #E2E8F0; border-radius:8px; padding:12px 14px; margin-bottom:8px; }
+  .rpt-label { font-size:14px; font-weight:600; margin-bottom:4px; }
+  .rpt-stats { display:flex; gap:12px; font-size:13px; color:var(--muted,#6B7280); margin-bottom:6px; flex-wrap:wrap; }
+  .rpt-bar-wrap { background:#E8EEF9; border-radius:4px; height:5px; }
+  .rpt-bar { background:var(--royal,#16317F); border-radius:4px; height:5px; transition:width .3s; }
 </style>
 
 <div id="splash">
@@ -438,7 +445,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.10</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.11</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -548,6 +555,8 @@
       <div class="fld grow"><label>Passer</label>
         <select id="fPasser" class="field" style="height:46px;font-size:15px"><option value="">— select —</option></select>
       </div>
+    </div>
+    <div class="row" id="receiverRow" style="display:none">
       <div class="fld grow"><label>Receiver</label>
         <select id="fReceiver" class="field" style="height:46px;font-size:15px"><option value="">— select —</option></select>
       </div>
@@ -1310,8 +1319,10 @@
     var showPass = track && typeVal === 'pass';
     var showRun  = track && typeVal === 'run';
     var prEl = document.getElementById('passerRow');
+    var rcEl = document.getElementById('receiverRow');
     var ruEl = document.getElementById('rusherRow');
     if (prEl) prEl.style.display = showPass ? '' : 'none';
+    if (rcEl) rcEl.style.display = showPass ? '' : 'none';
     if (ruEl) ruEl.style.display = showRun  ? '' : 'none';
   }
 
@@ -1377,59 +1388,59 @@
         if (p.success) rusherMap[p.rusher].eff++;
       }
     });
-    function pRow(stat, fields) {
+    function effColor(rate) {
+      return rate >= 60 ? '#15803d' : (rate >= 40 ? 'var(--muted,#6B7280)' : 'var(--bad,#b91c1c)');
+    }
+    function pCard(stat, attLabel, attVal, avgVal) {
       var pl = rosterMap[stat.id];
-      var n = stat.att || stat.tgts || stat.car || 1;
+      var n = attVal || 1;
       var rate = Math.round(100 * stat.eff / n);
-      return '<tr>' +
-        '<td><span class="pnum">#' + esc(pl.jersey) + '</span></td>' +
-        '<td><b>' + esc(pl.name) + '</b><br><span style="font-size:11px;color:var(--muted)">' + esc(pl.pos) + '</span></td>' +
-        fields.map(function(f) { return '<td style="font-family:var(--num)">' + f + '</td>'; }).join('') +
-        '<td><div style="display:flex;align-items:center;gap:6px"><div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;width:48px;flex:none"><div style="height:100%;width:' + rate + '%;background:var(--royal-2)"></div></div><b>' + rate + '%</b></div></td>' +
-      '</tr>';
+      var avg = avgVal;
+      return '<div class="rpt-row">' +
+        '<div class="rpt-label"><b>#' + esc(pl.jersey) + '</b> ' + esc(pl.name) +
+          ' <span style="font-size:11px;color:var(--muted)">' + esc(pl.pos) + '</span></div>' +
+        '<div class="rpt-stats">' +
+          '<span class="rpt-n">' + n + ' ' + esc(attLabel) + '</span>' +
+          '<span class="rpt-avg">' + stat.yds + ' yds</span>' +
+          '<span class="rpt-avg">' + avg + ' avg</span>' +
+          '<span class="rpt-eff" style="color:' + effColor(rate) + '">' + rate + '% eff</span>' +
+        '</div>' +
+        '<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:' + rate + '%"></div></div>' +
+      '</div>';
     }
     var html = '';
     var passers = Object.keys(passerMap).map(function(k){ return passerMap[k]; });
     if (passers.length) {
       passers.sort(function(a,b){ return (b.eff/b.att) - (a.eff/a.att); });
       html += '<div class="player-section-head">Passers</div>';
-      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Att</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
       passers.forEach(function(s) {
-        var avg = (s.yds / s.att).toFixed(1);
-        html += pRow(s, [s.att, s.yds, avg]);
+        html += pCard(s, 'att', s.att, (s.yds / s.att).toFixed(1) + ' yds');
       });
-      html += '</tbody></table></div>';
     }
     var receivers = Object.keys(receiverMap).map(function(k){ return receiverMap[k]; });
     if (receivers.length) {
       receivers.sort(function(a,b){ return (b.eff/b.tgts) - (a.eff/a.tgts); });
       html += '<div class="player-section-head">Receivers</div>';
-      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Tgts</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
       receivers.forEach(function(s) {
-        var avg = (s.yds / s.tgts).toFixed(1);
-        html += pRow(s, [s.tgts, s.yds, avg]);
+        html += pCard(s, 'tgts', s.tgts, (s.yds / s.tgts).toFixed(1) + ' yds');
       });
-      html += '</tbody></table></div>';
     }
     var rushers = Object.keys(rusherMap).map(function(k){ return rusherMap[k]; });
     if (rushers.length) {
       rushers.sort(function(a,b){ return (b.eff/b.car) - (a.eff/a.car); });
       html += '<div class="player-section-head">Rushers</div>';
-      html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Car</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
       rushers.forEach(function(s) {
-        var avg = (s.yds / s.car).toFixed(1);
-        html += pRow(s, [s.car, s.yds, avg]);
+        html += pCard(s, 'car', s.car, (s.yds / s.car).toFixed(1) + ' yds');
       });
-      html += '</tbody></table></div>';
     }
     var callPlayerMap = {};
     plays.forEach(function(p) {
-      var callKey = (p.call || '').trim();
-      if (!callKey) return;
+      var ck = (p.call || '').trim();
+      if (!ck) return;
       var playerId = p.passer || p.rusher || p.receiver;
       if (!playerId || !rosterMap[playerId]) return;
-      var key = callKey + '|||' + playerId;
-      if (!callPlayerMap[key]) callPlayerMap[key] = {call: callKey, id: playerId, n: 0, yds: 0, eff: 0};
+      var key = ck + '|||' + playerId;
+      if (!callPlayerMap[key]) callPlayerMap[key] = {call: ck, id: playerId, n: 0, yds: 0, eff: 0};
       callPlayerMap[key].n++;
       callPlayerMap[key].yds += Number(p.yards) || 0;
       if (p.success) callPlayerMap[key].eff++;
@@ -1444,18 +1455,14 @@
       return byCal[k].reduce(function(a,b){ return a + b.n; }, 0) >= 2;
     });
     if (callKeys.length) {
-      html += '<div class="player-section-head">By play call</div>';
-      callKeys.sort().forEach(function(callKey) {
-        var items = byCal[callKey];
+      html += '<div class="player-section-head">By Play Call</div>';
+      callKeys.sort().forEach(function(ck) {
+        var items = byCal[ck];
         items.sort(function(a,b){ return (b.eff/b.n) - (a.eff/a.n); });
-        html += '<div style="margin-bottom:14px">';
-        html += '<div style="font-size:13px;font-weight:600;margin-bottom:4px">' + esc(callKey) + '</div>';
-        html += '<div class="table-scroll"><table class="player-stat-table"><thead><tr><th></th><th>Player</th><th>Plays</th><th>Yds</th><th>Avg</th><th>Eff%</th></tr></thead><tbody>';
+        html += '<div style="font-size:13px;font-weight:600;margin:10px 0 4px">' + esc(ck) + '</div>';
         items.forEach(function(s) {
-          var avg = (s.yds / s.n).toFixed(1);
-          html += pRow(s, [s.n, s.yds, avg]);
+          html += pCard(s, 'plays', s.n, (s.yds / s.n).toFixed(1) + ' yds');
         });
-        html += '</tbody></table></div></div>';
       });
     }
     if (!html) {
@@ -1865,7 +1872,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.10", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.11", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -3076,8 +3083,15 @@
   var noteTargetId = null;
   function updateNotesBtn(){
     var btn = document.getElementById("notesBtn");
-    if(draft.note){ btn.textContent = "\u{1F4DD} Note ✓"; btn.classList.add("has-note"); }
-    else { btn.textContent = "\u{1F4DD} Add Note"; btn.classList.remove("has-note"); }
+    if(draft.note){
+      btn.textContent = "\u{1F4DD} Note set ✓";
+      btn.style.color = "var(--good, #2ECC71)";
+      btn.style.borderColor = "var(--good, #2ECC71)";
+    } else {
+      btn.textContent = "\u{1F4DD} Add Note";
+      btn.style.color = "";
+      btn.style.borderColor = "";
+    }
   }
   function openNotesModal(targetId){
     noteTargetId = targetId || null;
