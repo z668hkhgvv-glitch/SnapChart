@@ -394,9 +394,9 @@
   .lib-edit-btn{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;
     padding:2px 7px;border-radius:6px;line-height:1}
   .lib-edit-btn:hover{color:var(--royal);background:rgba(30,68,196,.08)}
-  .lib-cat-pick{width:100%;margin-bottom:12px;padding:9px 12px;border:1px solid var(--chalk);
-    border-radius:8px;font-size:14px;background:var(--white);color:var(--ink);cursor:pointer}
   .lib-empty{padding:10px 0;color:var(--muted);font-size:14px;font-style:italic}
+  .lib-section{margin-bottom:22px}
+  .lib-section-head{font-family:var(--num);text-transform:uppercase;letter-spacing:.04em;font-size:13px;font-weight:600;color:var(--royal);padding:5px 0 4px;border-bottom:2px solid var(--royal-bg);margin-bottom:8px}
 
   .player-stat-table{width:100%;border-collapse:collapse;font-size:14px}
   .player-stat-table th{font-family:var(--num);font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px;border-bottom:2px solid var(--line);text-align:left}
@@ -438,7 +438,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.8</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.10</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -652,6 +652,7 @@
     <button id="rbSeries" class="rbtn" style="display:none">By Series</button>
     <button id="rbNotes" class="rbtn">Game Notes</button>
     <button id="rbPlayers" class="rbtn">Players</button>
+    <button id="rbStats" class="rbtn">Game Stats</button>
   </div>
 
   <div class="report-summary" id="reportSummary"></div>
@@ -898,18 +899,7 @@
       <div class="st-section" data-panel="library" hidden>
         <div class="st-h">Autocomplete Library</div>
         <p class="st-desc">Edit saved formations, play calls, motions, fronts, and coverages used for autocomplete suggestions.</p>
-        <select id="libCatPick" class="lib-cat-pick">
-          <option value="forms">Formations</option>
-          <option value="calls">Play Calls</option>
-          <option value="motions">Motions</option>
-          <option value="fronts">Defensive Fronts</option>
-          <option value="coverages">Coverages</option>
-        </select>
-        <div id="stLibList" class="st-tag-list"></div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <input id="stLibNew" class="st-input" type="text" placeholder="New entry&hellip;" style="flex:1;min-width:0" autocapitalize="words">
-          <button class="add" id="stLibAdd" style="flex:0 0 auto;height:42px;font-size:15px;padding:0 18px">+ Add</button>
-        </div>
+        <div id="stLibAll"></div>
         <button class="cancel" id="stClearLib" style="width:100%;margin-top:14px;height:44px;font-size:14px;color:var(--bad);border-color:#eecaca">Clear Entire Library</button>
       </div>
 
@@ -1134,11 +1124,12 @@
     try{
       var raw = localStorage.getItem(LIB_KEY);
       var lib = raw ? JSON.parse(raw) : {};
-      suggest.forms     = uniqCI((suggest.forms||[]).concat(lib.forms||[]));
-      suggest.calls     = uniqCI((suggest.calls||[]).concat(lib.calls||[]));
-      suggest.motions   = uniqCI((suggest.motions||[]).concat(lib.motions||[]));
-      suggest.fronts    = uniqCI((suggest.fronts||[]).concat(lib.fronts||[]));
-      suggest.coverages = uniqCI((suggest.coverages||[]).concat(lib.coverages||[]));
+      function libSort(a){ return a.slice().sort(function(x,y){ return x.toLowerCase().localeCompare(y.toLowerCase()); }); }
+      suggest.forms     = libSort(uniqCI((suggest.forms||[]).concat(lib.forms||[])));
+      suggest.calls     = libSort(uniqCI((suggest.calls||[]).concat(lib.calls||[])));
+      suggest.motions   = libSort(uniqCI((suggest.motions||[]).concat(lib.motions||[])));
+      suggest.fronts    = libSort(uniqCI((suggest.fronts||[]).concat(lib.fronts||[])));
+      suggest.coverages = libSort(uniqCI((suggest.coverages||[]).concat(lib.coverages||[])));
       saveLibrary(); // persist the merged result immediately (migrates old data on first run)
     }catch(e){}
   }
@@ -1206,35 +1197,56 @@
         '<button class="st-tag-del" data-del="'+i+'" title="Remove">&times;</button></div>';
     }).join("");
   }
-  var libActiveCat = "forms";
+  var LIB_CATS = [
+    {key:'forms',    label:'Formations'},
+    {key:'calls',    label:'Play Calls'},
+    {key:'motions',  label:'Motions'},
+    {key:'fronts',   label:'Defensive Fronts'},
+    {key:'coverages',label:'Coverages'}
+  ];
+  var libEditingCat = null;
   var libEditingIdx = -1;
+  function libAlphaSort(arr){ return arr.slice().sort(function(a,b){ return a.toLowerCase().localeCompare(b.toLowerCase()); }); }
   function renderLibEditor(){
-    var el = document.getElementById("stLibList"); if(!el) return;
-    var pick = document.getElementById("libCatPick"); if(pick) pick.value = libActiveCat;
-    var arr = suggest[libActiveCat] || [];
-    if(!arr.length){ el.innerHTML = '<div class="lib-empty">No entries yet. Add one below.</div>'; return; }
-    el.innerHTML = arr.map(function(entry, i){
-      if(i === libEditingIdx){
-        return '<div class="st-tag-row">' +
-          '<input class="st-input lib-edit-inp" data-idx="'+i+'" value="'+esc(entry)+'" style="flex:1;min-width:0;height:36px;font-size:14px" autocapitalize="words">' +
-          '<div style="display:flex;gap:6px;margin-left:8px;flex-shrink:0">' +
-            '<button class="add lib-save" data-idx="'+i+'" style="height:36px;padding:0 14px;font-size:13px">Save</button>' +
-            '<button class="cancel lib-cancel" style="height:36px;padding:0 12px;font-size:13px">✕</button>' +
+    var el = document.getElementById("stLibAll"); if(!el) return;
+    el.innerHTML = LIB_CATS.map(function(cat){
+      var arr = suggest[cat.key] || [];
+      var rows = arr.length ? arr.map(function(entry, i){
+        if(libEditingCat === cat.key && libEditingIdx === i){
+          return '<div class="st-tag-row">' +
+            '<input class="st-input lib-edit-inp" data-cat="'+cat.key+'" data-idx="'+i+'" value="'+esc(entry)+'" style="flex:1;min-width:0;height:36px;font-size:14px" autocapitalize="words">' +
+            '<div style="display:flex;gap:6px;margin-left:8px;flex-shrink:0">' +
+              '<button class="add lib-save" data-cat="'+cat.key+'" data-idx="'+i+'" style="height:36px;padding:0 14px;font-size:13px">Save</button>' +
+              '<button class="cancel lib-cancel" style="height:36px;padding:0 12px;font-size:13px">✕</button>' +
+            '</div></div>';
+        }
+        return '<div class="st-tag-row"><span>'+esc(entry)+'</span>' +
+          '<div style="display:flex;gap:2px;flex-shrink:0">' +
+            '<button class="lib-edit-btn lib-edit" data-cat="'+cat.key+'" data-edit="'+i+'" title="Edit">✎</button>' +
+            '<button class="st-tag-del lib-del" data-cat="'+cat.key+'" data-del="'+i+'" title="Delete">&times;</button>' +
           '</div></div>';
-      }
-      return '<div class="st-tag-row"><span>'+esc(entry)+'</span>' +
-        '<div style="display:flex;gap:2px;flex-shrink:0">' +
-          '<button class="lib-edit-btn lib-edit" data-edit="'+i+'" title="Edit">✎</button>' +
-          '<button class="st-tag-del lib-del" data-del="'+i+'" title="Delete">&times;</button>' +
-        '</div></div>';
-    }).join("");
+      }).join('') : '<div class="lib-empty">No entries yet.</div>';
+      return '<div class="lib-section">' +
+        '<div class="lib-section-head">'+esc(cat.label)+'</div>' +
+        '<div>'+rows+'</div>' +
+        '<div style="display:flex;gap:8px;margin-top:6px">' +
+          '<input id="stLibNew_'+cat.key+'" class="st-input" type="text" placeholder="Add '+esc(cat.label.toLowerCase())+'&hellip;" style="flex:1;min-width:0;height:38px" autocapitalize="words">' +
+          '<button class="add lib-add-btn" data-cat="'+cat.key+'" style="flex:0 0 auto;height:38px;padding:0 14px;font-size:13px">+ Add</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
-  function libAddNew(){
-    var inp = document.getElementById("stLibNew");
+  function libAddToCat(catKey){
+    var inp = document.getElementById("stLibNew_"+catKey); if(!inp) return;
     var val = titleCaseWords(inp.value.trim()); if(!val) return;
-    var arr = suggest[libActiveCat] || [];
-    if(arr.map(function(s){ return s.toLowerCase(); }).indexOf(val.toLowerCase()) < 0){ arr.push(val); suggest[libActiveCat] = arr; }
+    var arr = suggest[catKey] || [];
+    if(arr.map(function(s){ return s.toLowerCase(); }).indexOf(val.toLowerCase()) < 0){
+      arr.push(val);
+      suggest[catKey] = libAlphaSort(arr);
+    }
     inp.value = ""; saveLibrary(); rebuildLists(); renderLibEditor();
+    // re-focus for rapid entry
+    var newInp = document.getElementById("stLibNew_"+catKey); if(newInp) newInp.focus();
   }
   // ---- player tracking helpers ----
   function sortedRoster() {
@@ -1452,6 +1464,293 @@
     return html;
   }
 
+  function buildGameStats(playsArr) {
+    if (!playsArr || !playsArr.length) return '<div class="rep-empty">No plays logged yet.</div>';
+
+    function pct(n, d) { return d ? Math.round(100*n/d) + '%' : '—'; }
+    function yavg(total, count) { return count ? (total/count).toFixed(1) : '—'; }
+    function signYds(n) { return n > 0 ? '+' + n : String(n); }
+
+    function card(val, lbl, sub) {
+      return '<div style="background:var(--chalk,#F1F5F9);border-radius:10px;padding:12px 8px;text-align:center">' +
+        '<div style="font-family:var(--num,Oswald);font-size:22px;font-weight:700;color:var(--royal,#16317F);line-height:1.1">' + val + '</div>' +
+        '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--slate,#6B7280);margin-top:4px">' + lbl + '</div>' +
+        (sub ? '<div style="font-size:10px;color:var(--slate,#6B7280);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + sub + '</div>' : '') +
+        '</div>';
+    }
+    function grid(cards, cols) {
+      return '<div style="display:grid;grid-template-columns:repeat(' + (cols||3) + ',1fr);gap:8px;margin-bottom:8px">' + cards.join('') + '</div>';
+    }
+    function secHead(title) {
+      return '<div style="font-family:var(--num,Oswald);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--royal,#16317F);padding:4px 0 5px;border-bottom:2px solid var(--royal-bg,#E8EEF9);margin:18px 0 10px">' + title + '</div>';
+    }
+
+    var runs = playsArr.filter(function(p){ return p.type === 'run'; });
+    var passes = playsArr.filter(function(p){ return p.type === 'pass'; });
+    var punts = playsArr.filter(function(p){ return p.type === 'punt'; });
+    var scrimmage = playsArr.filter(function(p){ return p.type !== 'punt'; });
+
+    var totalYards = playsArr.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+    var rushYards  = runs.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+    var passYards  = passes.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+
+    var effAll     = playsArr.filter(function(p){ return p.success; }).length;
+    var effRuns    = runs.filter(function(p){ return p.success; }).length;
+    var effPasses  = passes.filter(function(p){ return p.success; }).length;
+
+    var firstDowns = scrimmage.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||10); });
+
+    function longestOf(arr) {
+      if (!arr.length) return null;
+      return arr.reduce(function(best,p){ return (Number(p.yards)||0) > (Number(best.yards)||0) ? p : best; }, arr[0]);
+    }
+    var longestPlay = longestOf(scrimmage);
+    var longestRun  = longestOf(runs);
+    var longestPass = longestOf(passes);
+
+    var negRuns   = runs.filter(function(p){ return (Number(p.yards)||0) < 0; });
+    var negPasses = passes.filter(function(p){ return (Number(p.yards)||0) < 0; });
+    var allNeg    = scrimmage.filter(function(p){ return (Number(p.yards)||0) < 0; });
+    var negYards  = allNeg.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+    var biggestLossPlay = allNeg.length ? allNeg.reduce(function(worst,p){
+      return (Number(p.yards)||0) < (Number(worst.yards)||0) ? p : worst;
+    }, allNeg[0]) : null;
+
+    function downStats(d) {
+      var sub = playsArr.filter(function(p){ return Number(p.down) === d; });
+      var yds = sub.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+      var convs = sub.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||10); }).length;
+      var eff = sub.filter(function(p){ return p.success; }).length;
+      return { n: sub.length, yds: yds, convs: convs, eff: eff, ypp: sub.length ? (yds/sub.length).toFixed(1) : '0.0' };
+    }
+    var d1 = downStats(1), d2 = downStats(2), d3 = downStats(3), d4 = downStats(4);
+
+    var s2short = playsArr.filter(function(p){ return Number(p.down)===2 && (Number(p.dist)||10)<=3; });
+    var s2long  = playsArr.filter(function(p){ return Number(p.down)===2 && (Number(p.dist)||10)>=8; });
+    var s3short = playsArr.filter(function(p){ return Number(p.down)===3 && (Number(p.dist)||10)<=3; });
+    var s3long  = playsArr.filter(function(p){ return Number(p.down)===3 && (Number(p.dist)||10)>=8; });
+
+    var drives = [], curDr = [];
+    for (var i = 0; i < playsArr.length; i++) {
+      var pl = playsArr[i];
+      curDr.push(pl);
+      if (pl.type === 'punt' || (Number(pl.down) === 4 && !pl.success)) {
+        drives.push(curDr.slice()); curDr = [];
+      }
+    }
+    if (curDr.length) drives.push(curDr);
+
+    var totalDriveYards = drives.reduce(function(s,d){ return s + d.reduce(function(sy,p){ return sy + (Number(p.yards)||0); }, 0); }, 0);
+    var threeAndOuts = drives.filter(function(d){
+      var last = d[d.length-1];
+      var nonPunt = d.filter(function(p){ return p.type !== 'punt'; }).length;
+      return last.type === 'punt' && nonPunt <= 3;
+    }).length;
+    var turnoverOnDowns = drives.filter(function(d){
+      var last = d[d.length-1];
+      return Number(last.down) === 4 && !last.success;
+    }).length;
+
+    var exp10 = scrimmage.filter(function(p){ return (Number(p.yards)||0) >= 10; }).length;
+    var exp15 = scrimmage.filter(function(p){ return (Number(p.yards)||0) >= 15; }).length;
+    var exp20 = scrimmage.filter(function(p){ return (Number(p.yards)||0) >= 20; }).length;
+
+    var hasQtrs   = playsArr.some(function(p){ return p.qtr; });
+    var hasSeries = playsArr.some(function(p){ return p.series; });
+    var hasDowns  = playsArr.some(function(p){ return p.down; });
+
+    var html = '<div style="padding:4px 0 24px">';
+
+    // Offense Overview
+    html += secHead('Offense Overview');
+    html += grid([
+      card(playsArr.length, 'Total Plays'),
+      card(signYds(totalYards), 'Net Yards'),
+      card(yavg(totalYards, playsArr.length), 'Yards / Play'),
+      card(firstDowns.length, '1st Downs'),
+      card(pct(effAll, playsArr.length), 'Overall Eff.'),
+      card(punts.length, 'Punts')
+    ]);
+    if (longestPlay) {
+      html += '<div style="font-size:12px;color:var(--slate);text-align:center;margin-bottom:6px">' +
+        'Longest play: <b style="font-family:var(--num)">' + (Number(longestPlay.yards)||0) + ' yds</b>' +
+        (longestPlay.call ? ' &middot; ' + esc(longestPlay.call) : '') + '</div>';
+    }
+
+    // Run game
+    if (runs.length) {
+      html += secHead('Run Game');
+      html += grid([
+        card(runs.length, 'Carries'),
+        card(rushYards, 'Rush Yards'),
+        card(yavg(rushYards, runs.length), 'Yards / Carry'),
+        card(pct(effRuns, runs.length), 'Rush Eff.'),
+        card(longestRun ? (Number(longestRun.yards)||0) + ' yds' : '—', 'Longest Run', longestRun && longestRun.call ? esc(longestRun.call) : ''),
+        card(negRuns.length, 'Neg. Runs')
+      ]);
+    }
+
+    // Pass game
+    if (passes.length) {
+      html += secHead('Pass Game');
+      html += grid([
+        card(passes.length, 'Attempts'),
+        card(passYards, 'Pass Yards'),
+        card(yavg(passYards, passes.length), 'Yards / Att.'),
+        card(pct(effPasses, passes.length), 'Pass Eff.'),
+        card(longestPass ? (Number(longestPass.yards)||0) + ' yds' : '—', 'Longest Pass', longestPass && longestPass.call ? esc(longestPass.call) : ''),
+        card(negPasses.length, 'Sacks / Losses')
+      ]);
+    }
+
+    // Down & distance
+    if (hasDowns) {
+      html += secHead('Down &amp; Distance');
+      html += '<div class="table-scroll"><table style="font-size:13px"><thead><tr>' +
+        '<th style="text-align:left">Down</th><th>Plays</th><th>Conv.</th><th>Conv %</th><th>Avg Yds</th><th>Eff %</th>' +
+        '</tr></thead><tbody>';
+      [[1,'1st',d1],[2,'2nd',d2],[3,'3rd',d3],[4,'4th',d4]].forEach(function(row) {
+        var lbl = row[1], ds = row[2];
+        if (!ds.n) return;
+        var yppColor = Number(ds.ypp) >= 0 ? 'var(--green,#2ECC71)' : '#DC2626';
+        html += '<tr>' +
+          '<td><b>' + lbl + ' Down</b></td>' +
+          '<td style="font-family:var(--num);text-align:center">' + ds.n + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + ds.convs + '/' + ds.n + '</td>' +
+          '<td style="font-family:var(--num);text-align:center"><b>' + pct(ds.convs,ds.n) + '</b></td>' +
+          '<td style="font-family:var(--num);text-align:center;color:' + yppColor + '">' + (Number(ds.ypp)>=0?'+':'') + ds.ypp + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + pct(ds.eff,ds.n) + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div>';
+
+      var sitCards = [];
+      if (s2short.length) {
+        var c2s = s2short.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||3); }).length;
+        sitCards.push(card(pct(c2s,s2short.length), '2nd &amp; Short (≤3)', s2short.length + ' plays'));
+      }
+      if (s2long.length) {
+        var c2l = s2long.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||8); }).length;
+        sitCards.push(card(pct(c2l,s2long.length), '2nd &amp; Long (8+)', s2long.length + ' plays'));
+      }
+      if (s3short.length) {
+        var c3s = s3short.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||3); }).length;
+        sitCards.push(card(pct(c3s,s3short.length), '3rd &amp; Short (≤3)', s3short.length + ' plays'));
+      }
+      if (s3long.length) {
+        var c3l = s3long.filter(function(p){ return (Number(p.yards)||0) >= (Number(p.dist)||8); }).length;
+        sitCards.push(card(pct(c3l,s3long.length), '3rd &amp; Long (8+)', s3long.length + ' plays'));
+      }
+      if (sitCards.length) {
+        html += '<div style="margin-top:10px"><div style="display:grid;grid-template-columns:repeat(' + Math.min(sitCards.length,2) + ',1fr);gap:8px">' + sitCards.join('') + '</div></div>';
+      }
+    }
+
+    // Series / drives
+    html += secHead('Series / Drives');
+    html += grid([
+      card(drives.length, 'Total Drives'),
+      card(yavg(playsArr.length, drives.length), 'Plays / Drive'),
+      card(yavg(totalDriveYards, drives.length), 'Yards / Drive'),
+      card(threeAndOuts, '3-and-Outs'),
+      card(turnoverOnDowns, 'TOD'),
+      card(punts.length, 'Punts')
+    ]);
+
+    // Explosive plays
+    if (exp10 > 0 || exp15 > 0 || exp20 > 0) {
+      html += secHead('Explosive Plays');
+      html += grid([
+        card(exp10, '10+ Yard Gains'),
+        card(exp15, '15+ Yard Gains'),
+        card(exp20, '20+ Yard Gains')
+      ]);
+    }
+
+    // Negative plays
+    if (allNeg.length > 0) {
+      html += secHead('Negative Plays');
+      html += grid([
+        card(allNeg.length, 'Neg. Plays'),
+        card(negYards + ' yds', 'Yards Lost'),
+        card(biggestLossPlay ? (Number(biggestLossPlay.yards)||0) + ' yds' : '—', 'Biggest Loss', biggestLossPlay && biggestLossPlay.call ? esc(biggestLossPlay.call) : '')
+      ]);
+    }
+
+    // Run/pass split
+    if (runs.length && passes.length) {
+      var total = runs.length + passes.length;
+      var runPct = Math.round(100 * runs.length / total);
+      var pasPct = 100 - runPct;
+      html += secHead('Run / Pass Split');
+      html += '<div style="margin-bottom:10px">' +
+        '<div style="display:flex;height:30px;border-radius:8px;overflow:hidden;margin-bottom:8px">' +
+          '<div style="flex:' + runPct + ';background:var(--royal,#16317F);display:flex;align-items:center;justify-content:center">' +
+            '<span style="font-family:var(--num);font-size:12px;color:#fff;font-weight:700">' + (runPct >= 12 ? runPct + '% RUN' : '') + '</span>' +
+          '</div>' +
+          '<div style="flex:' + pasPct + ';background:#2ECC71;display:flex;align-items:center;justify-content:center">' +
+            '<span style="font-family:var(--num);font-size:12px;color:#fff;font-weight:700">' + (pasPct >= 12 ? pasPct + '% PASS' : '') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-around;font-size:12px;color:var(--slate)">' +
+          '<span>' + runs.length + ' car · ' + rushYards + ' yds · ' + yavg(rushYards,runs.length) + ' ypc</span>' +
+          '<span>' + passes.length + ' att · ' + passYards + ' yds · ' + yavg(passYards,passes.length) + ' ypa</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // By quarter
+    if (hasQtrs) {
+      var qtrRowsHtml = ['Q1','Q2','Q3','Q4'].map(function(q) {
+        var sub = playsArr.filter(function(p){ return p.qtr === q; });
+        if (!sub.length) return '';
+        var yds = sub.reduce(function(s,p){ return s + (Number(p.yards)||0); }, 0);
+        var eff = sub.filter(function(p){ return p.success; }).length;
+        return '<tr>' +
+          '<td><b>' + q + '</b></td>' +
+          '<td style="font-family:var(--num);text-align:center">' + sub.length + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + signYds(yds) + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + yavg(yds,sub.length) + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + pct(eff,sub.length) + '</td>' +
+        '</tr>';
+      }).filter(Boolean).join('');
+      if (qtrRowsHtml) {
+        html += secHead('By Quarter');
+        html += '<div class="table-scroll"><table style="font-size:13px"><thead><tr>' +
+          '<th style="text-align:left">Qtr</th><th>Plays</th><th>Yards</th><th>Avg</th><th>Eff %</th>' +
+          '</tr></thead><tbody>' + qtrRowsHtml + '</tbody></table></div>';
+      }
+    }
+
+    // By series (scrimmage mode)
+    if (hasSeries) {
+      var serNums = [];
+      playsArr.forEach(function(p){ if (p.series && serNums.indexOf(p.series) < 0) serNums.push(p.series); });
+      serNums.sort(function(a,b){ return Number(a) - Number(b); });
+      var serRowsHtml = serNums.slice(0,16).map(function(s) {
+        var sub = playsArr.filter(function(p){ return p.series === s; });
+        var yds = sub.reduce(function(sy,p){ return sy + (Number(p.yards)||0); }, 0);
+        var eff = sub.filter(function(p){ return p.success; }).length;
+        return '<tr>' +
+          '<td><b>Series ' + s + '</b></td>' +
+          '<td style="font-family:var(--num);text-align:center">' + sub.length + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + signYds(yds) + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + yavg(yds,sub.length) + '</td>' +
+          '<td style="font-family:var(--num);text-align:center">' + pct(eff,sub.length) + '</td>' +
+        '</tr>';
+      }).join('');
+      if (serRowsHtml) {
+        html += secHead('By Series');
+        html += '<div class="table-scroll"><table style="font-size:13px"><thead><tr>' +
+          '<th style="text-align:left">Series</th><th>Plays</th><th>Yards</th><th>Avg</th><th>Eff %</th>' +
+          '</tr></thead><tbody>' + serRowsHtml + '</tbody></table></div>';
+      }
+    }
+
+    html += '</div>';
+    return html;
+  }
+
   function renderSettingsPanel(){
     document.getElementById("stTeamName").value = settings.teamName||"";
     document.getElementById("stCoachName").value = settings.coachName||"";
@@ -1566,7 +1865,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.8", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.10", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2670,36 +2969,41 @@
   document.getElementById("stNewTag").addEventListener("keydown", function(e){
     if(e.key === "Enter") document.getElementById("stAddTag").click();
   });
-  document.getElementById("libCatPick").addEventListener("change", function(){
-    libActiveCat = this.value; libEditingIdx = -1; renderLibEditor();
-  });
-  document.getElementById("stLibList").addEventListener("click", function(e){
+  document.getElementById("stLibAll").addEventListener("click", function(e){
     var del = e.target.closest(".lib-del");
     if(del){
+      var cat = del.getAttribute("data-cat");
       var i = Number(del.getAttribute("data-del"));
-      var arr = suggest[libActiveCat];
+      var arr = suggest[cat];
       if(!confirm("Delete \""+arr[i]+"\"?")) return;
-      arr.splice(i,1); libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
+      arr.splice(i,1); libEditingCat=null; libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
     }
     var edit = e.target.closest(".lib-edit");
-    if(edit){ libEditingIdx=Number(edit.getAttribute("data-edit")); renderLibEditor(); return; }
+    if(edit){
+      libEditingCat = edit.getAttribute("data-cat");
+      libEditingIdx = Number(edit.getAttribute("data-edit"));
+      renderLibEditor();
+      var inp = document.querySelector(".lib-edit-inp"); if(inp) inp.focus();
+      return;
+    }
     var save = e.target.closest(".lib-save");
     if(save){
+      var cat = save.getAttribute("data-cat");
       var idx = Number(save.getAttribute("data-idx"));
       var inp = this.querySelector(".lib-edit-inp");
       var val = titleCaseWords((inp ? inp.value : "").trim());
-      if(val) suggest[libActiveCat][idx] = val;
-      libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
+      if(val){ suggest[cat][idx] = val; suggest[cat] = libAlphaSort(suggest[cat]); }
+      libEditingCat=null; libEditingIdx=-1; saveLibrary(); rebuildLists(); renderLibEditor(); return;
     }
-    if(e.target.closest(".lib-cancel")){ libEditingIdx=-1; renderLibEditor(); return; }
+    if(e.target.closest(".lib-cancel")){ libEditingCat=null; libEditingIdx=-1; renderLibEditor(); return; }
+    var addBtn = e.target.closest(".lib-add-btn");
+    if(addBtn){ libAddToCat(addBtn.getAttribute("data-cat")); return; }
   });
-  document.getElementById("stLibList").addEventListener("keydown", function(e){
+  document.getElementById("stLibAll").addEventListener("keydown", function(e){
     if(e.key !== "Enter") return;
-    var save = this.querySelector(".lib-save"); if(save) save.click();
-  });
-  document.getElementById("stLibAdd").addEventListener("click", libAddNew);
-  document.getElementById("stLibNew").addEventListener("keydown", function(e){
-    if(e.key === "Enter") libAddNew();
+    var save = this.querySelector(".lib-save"); if(save){ save.click(); return; }
+    var addInp = e.target.closest('[id^="stLibNew_"]');
+    if(addInp){ var cat = addInp.id.replace("stLibNew_",""); libAddToCat(cat); }
   });
   document.getElementById("stClearLib").addEventListener("click", function(){
     if(!confirm("Clear ALL autocomplete entries across all categories? This can’t be undone.")) return;
@@ -3125,6 +3429,7 @@
     document.getElementById("rbSeries").classList.toggle("on", reportMode === "series");
     document.getElementById("rbNotes").classList.toggle("on", reportMode === "notes");
     document.getElementById("rbPlayers").classList.toggle("on", reportMode === "players");
+    document.getElementById("rbStats").classList.toggle("on", reportMode === "stats");
 
     var n = plays.length;
     var wrap = document.getElementById("reportTableWrap");
@@ -3167,6 +3472,12 @@
     if(reportMode === "series"){
       sum.innerHTML = "How each "+(settings.effScrimPlays||10)+"-play series went \u00b7 effective at 5+ yards";
       wrap.innerHTML = buildSeriesReport();
+      return;
+    }
+
+    if(reportMode === "stats"){
+      sum.innerHTML = "Comprehensive game statistics";
+      wrap.innerHTML = buildGameStats(plays);
       return;
     }
 
@@ -3225,6 +3536,7 @@
   document.getElementById("rbSeries").addEventListener("click", function(){ reportMode="series"; detailCall=null; renderReport(); });
   document.getElementById("rbNotes").addEventListener("click", function(){ reportMode="notes"; detailCall=null; renderReport(); });
   document.getElementById("rbPlayers").addEventListener("click", function(){ reportMode="players"; detailCall=null; renderReport(); });
+  document.getElementById("rbStats").addEventListener("click", function(){ reportMode="stats"; detailCall=null; renderReport(); });
   document.getElementById("reportTableWrap").addEventListener("click", function(e){
     // drill into a play call group
     if(reportMode === "call" && !detailCall){
