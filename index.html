@@ -438,7 +438,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.7</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.8</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -926,6 +926,10 @@
         <div id="rosterSection">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
             <span style="font-size:13px;color:var(--muted)">Roster</span>
+            <div style="display:flex;gap:4px">
+              <button id="rosterSortNum" class="cancel" style="margin:0;font-size:12px;padding:3px 10px;height:auto">#</button>
+              <button id="rosterSortName" class="cancel" style="margin:0;font-size:12px;padding:3px 10px;height:auto">A–Z</button>
+            </div>
             <button id="importRosterBtn" class="cancel" style="margin:0;font-size:12px;padding:4px 10px;height:auto">Import Hudl CSV</button>
             <input id="rosterCsvInput" type="file" accept=".csv" style="display:none">
           </div>
@@ -1087,7 +1091,8 @@
     eff7v7Start:40, eff7v7Line1:20, eff7v7Line2:5,
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"],
     trackPlayers: false,
-    roster: []
+    roster: [],
+    rosterSort: 'number'
   };
   var COLOR_PALETTE = [
     {name:"Royal Blue",   color:"#16317F", accent:"#1E44C4", text:"white"},
@@ -1232,14 +1237,36 @@
     inp.value = ""; saveLibrary(); rebuildLists(); renderLibEditor();
   }
   // ---- player tracking helpers ----
+  function sortedRoster() {
+    var r = (settings.roster || []).slice();
+    if (settings.rosterSort === 'name') {
+      r.sort(function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+    } else {
+      r.sort(function(a, b) { return (Number(a.jersey) || 0) - (Number(b.jersey) || 0); });
+    }
+    return r;
+  }
+  function paintRosterSortBtns() {
+    var numBtn  = document.getElementById('rosterSortNum');
+    var nameBtn = document.getElementById('rosterSortName');
+    if (!numBtn || !nameBtn) return;
+    var byNum = (settings.rosterSort !== 'name');
+    numBtn.style.background  = byNum  ? 'var(--royal)' : '';
+    numBtn.style.color       = byNum  ? '#fff'         : '';
+    numBtn.style.borderColor = byNum  ? 'var(--royal)' : '';
+    nameBtn.style.background = !byNum ? 'var(--royal)' : '';
+    nameBtn.style.color      = !byNum ? '#fff'         : '';
+    nameBtn.style.borderColor= !byNum ? 'var(--royal)' : '';
+  }
   function renderRosterList() {
     var list = document.getElementById("rosterList");
     if (!list) return;
+    paintRosterSortBtns();
     if (!settings.roster || !settings.roster.length) {
       list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0">No players yet.</div>';
       return;
     }
-    list.innerHTML = settings.roster.map(function(p) {
+    list.innerHTML = sortedRoster().map(function(p) {
       return '<div class="roster-player">' +
         '<span class="roster-jersey">#' + esc(p.jersey) + '</span>' +
         '<span class="roster-name">' + esc(p.name) + '</span>' +
@@ -1250,21 +1277,12 @@
   }
 
   function populatePlayerDropdowns() {
-    var roster = settings.roster || [];
-    var allSels = [
-      ['fPasser',   ['QB', 'Other']],
-      ['fReceiver', ['WR', 'TE', 'RB', 'Other']],
-      ['fRusher',   ['RB', 'QB', 'WR', 'Other']]
-    ];
-    allSels.forEach(function(pair) {
-      var el = document.getElementById(pair[0]);
+    var roster = sortedRoster();
+    var allSels = ['fPasser', 'fReceiver', 'fRusher'];
+    allSels.forEach(function(selId) {
+      var el = document.getElementById(selId);
       if (!el) return;
-      var preferred = pair[1];
-      var sorted = roster.slice().sort(function(a, b) {
-        var ai = preferred.indexOf(a.pos), bi = preferred.indexOf(b.pos);
-        ai = ai === -1 ? 99 : ai; bi = bi === -1 ? 99 : bi;
-        return ai !== bi ? ai - bi : (Number(a.jersey) || 0) - (Number(b.jersey) || 0);
-      });
+      var sorted = roster;
       var prev = el.value;
       el.innerHTML = '<option value="">— select —</option>' +
         sorted.map(function(p) {
@@ -1548,7 +1566,7 @@
     }catch(e){ /* non-fatal */ }
   }
   function exportFullBackup(){
-    var data = {app:"SnapChart", version:"1.5.7", exportedAt:new Date().toLocaleString("en-US"),
+    var data = {app:"SnapChart", version:"1.5.8", exportedAt:new Date().toLocaleString("en-US"),
       plays:plays, meta:meta, games:games, seasons:seasons, suggest:suggest, currentGameId:currentGameId, currentMode:currentMode, settings:settings};
     var json = JSON.stringify(data, null, 2);
     try{
@@ -2568,6 +2586,12 @@
     save();
     populatePlayerDropdowns();
     updatePlayerFieldVisibility();
+  });
+  document.getElementById('rosterSortNum').addEventListener('click', function() {
+    settings.rosterSort = 'number'; save(); renderRosterList(); populatePlayerDropdowns();
+  });
+  document.getElementById('rosterSortName').addEventListener('click', function() {
+    settings.rosterSort = 'name'; save(); renderRosterList(); populatePlayerDropdowns();
   });
 
   document.getElementById('addRosterPlayerBtn').addEventListener('click', function() {
