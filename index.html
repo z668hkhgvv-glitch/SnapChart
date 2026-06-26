@@ -416,6 +416,31 @@
   .rpt-stats { display:flex; gap:12px; font-size:13px; color:var(--muted,#6B7280); margin-bottom:6px; flex-wrap:wrap; }
   .rpt-bar-wrap { background:#E8EEF9; border-radius:4px; height:5px; }
   .rpt-bar { background:var(--royal,#16317F); border-radius:4px; height:5px; transition:width .3s; }
+  /* Heat Map */
+  .hm-wrap{margin-top:4px}
+  .hm-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .hm-f{padding:5px 13px;border:1.5px solid var(--chalk,#D8DFF0);border-radius:20px;background:#fff;color:var(--ink,#0F1830);font-family:var(--num);font-size:13px;cursor:pointer;letter-spacing:.03em}
+  .hm-f.hm-f-on{background:var(--royal,#16317F);color:#fff;border-color:var(--royal,#16317F)}
+  .hm-total{margin-left:auto;color:var(--muted,#6B7280);font-size:13px}
+  .hm-field{display:flex;align-items:stretch;border:2px solid #374151;border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .hm-ez{width:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#1a4a1a}
+  .hm-ez span{color:rgba(255,255,255,.55);font-family:var(--num);font-size:8px;text-transform:uppercase;letter-spacing:.07em;writing-mode:vertical-rl}
+  .hm-ez-own span{transform:rotate(180deg)}
+  .hm-grid-wrap{flex:1;display:flex;flex-direction:column;background:#1e5c1e}
+  .hm-zone-row{display:flex;border-bottom:1px solid rgba(255,255,255,.18)}
+  .hm-hlbl-spc{width:68px;flex-shrink:0}
+  .hm-zh{flex:1;text-align:center;color:rgba(255,255,255,.8);font-family:var(--num);font-size:10px;padding:4px 2px;text-transform:uppercase;letter-spacing:.04em;border-left:1px solid rgba(255,255,255,.12)}
+  .hm-row{display:flex;border-bottom:1px solid rgba(255,255,255,.1)}
+  .hm-row:last-child{border-bottom:0}
+  .hm-hlbl{width:68px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding:4px 8px 4px 0;color:rgba(255,255,255,.7);font-size:11px;font-family:var(--num)}
+  .hm-cell{flex:1;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid rgba(255,255,255,.08);padding:4px 2px;text-align:center}
+  .hm-cnt{font-family:var(--num);font-size:20px;font-weight:700;line-height:1;color:#fff}
+  .hm-pct{font-size:11px;margin-top:2px;color:rgba(255,255,255,.9)}
+  .hm-avg{font-size:10px;color:rgba(255,255,255,.7)}
+  .hm-empty{color:#6B7280;font-size:16px}
+  .hm-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .hm-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted,#6B7280)}
+  .hm-swatch{display:inline-block;width:13px;height:13px;border-radius:3px;flex-shrink:0}
 </style>
 
 <div id="splash">
@@ -445,7 +470,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.12</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.13</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -662,6 +687,7 @@
     <button id="rbNotes" class="rbtn">Game Notes</button>
     <button id="rbPlayers" class="rbtn">Players</button>
     <button id="rbStats" class="rbtn">Game Stats</button>
+    <button id="rbHeat" class="rbtn">Heat Map</button>
   </div>
 
   <div class="report-summary" id="reportSummary"></div>
@@ -1042,6 +1068,16 @@
       <button id="drillClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
     </div>
     <div id="drillBody" class="drill-scroll"></div>
+  </div>
+</div>
+
+<div class="modal-back" id="hmModal" hidden>
+  <div class="modal" style="max-width:860px;width:96vw;max-height:90vh;overflow-y:auto;padding:18px 18px 22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 id="hmTitle" style="margin:0;font-size:18px"></h2>
+      <button id="hmClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
+    </div>
+    <div id="hmBody"></div>
   </div>
 </div>
 
@@ -3311,6 +3347,8 @@
 
   // ---- Quick Report ----
   var reportMode = "most";
+  var hmFilter = "";
+  var hmModalPlays = null;
   var detailCall = null; // when set, show only snaps for this play call (lowercase key)
   function callKey(p){ return (((p.call||"").trim()) || "(no name)").toLowerCase(); }
   function sortedPlays(mode){
@@ -3575,6 +3613,84 @@
       '</div>';
     }).join("");
   }
+  function buildHeatMap(playsArr, filterType){
+    var ZONES=[
+      {label:"Own 1–20",  min:1,  max:20},
+      {label:"Own 21–40", min:21, max:40},
+      {label:"Midfield",       min:41, max:60},
+      {label:"Opp 40–21", min:61, max:80},
+      {label:"Opp 20–11", min:81, max:89},
+      {label:"Red Zone",       min:90, max:99}
+    ];
+    var HASHES=["L","M","R"];
+    var HASH_LBL={L:"Left Hash",M:"Middle",R:"Right Hash"};
+    function posFromYl(yl){
+      var n=Number(yl);
+      if(yl===""||yl==null||isNaN(n)) return null;
+      return n>=0?n:100+n;
+    }
+    function hmColor(rate,count){
+      if(!count) return "#E8EBF0";
+      var h=Math.round(rate*120),l=count<3?52:43;
+      return "hsl("+h+",65%,"+l+"%)";
+    }
+    var src=filterType?playsArr.filter(function(p){return p.type===filterType;}):playsArr.slice();
+    src=src.filter(function(p){return p.type!=="punt";});
+    var grid={};
+    src.forEach(function(p){
+      var pos=posFromYl(p.yl); if(pos===null) return;
+      var zi=-1;
+      for(var i=0;i<ZONES.length;i++){ if(pos>=ZONES[i].min&&pos<=ZONES[i].max){zi=i;break;} }
+      if(zi===-1) return;
+      if(p.hash!=="L"&&p.hash!=="M"&&p.hash!=="R") return;
+      var key=zi+"_"+p.hash;
+      if(!grid[key]) grid[key]={count:0,success:0,yards:0};
+      grid[key].count++; if(p.success) grid[key].success++; grid[key].yards+=Number(p.yards)||0;
+    });
+    var totalPlays=src.filter(function(p){
+      var pos=posFromYl(p.yl);
+      return pos!==null&&(p.hash==="L"||p.hash==="M"||p.hash==="R");
+    }).length;
+    var zoneHdrs=ZONES.map(function(z){return '<div class="hm-zh">'+esc(z.label)+'</div>';}).join("");
+    var rows=HASHES.map(function(h){
+      var cells=ZONES.map(function(z,zi){
+        var d=grid[zi+"_"+h]||{count:0,success:0,yards:0};
+        var rate=d.count?d.success/d.count:0;
+        var pct=d.count?Math.round(100*rate):0;
+        var avg=d.count?(d.yards/d.count).toFixed(1):null;
+        var bg=hmColor(rate,d.count);
+        var inner=d.count
+          ?'<div class="hm-cnt">'+d.count+'</div><div class="hm-pct">'+pct+'% eff</div>'+(avg!==null?'<div class="hm-avg">'+(Number(avg)>0?"+":"")+avg+' yds</div>':"")
+          :'<div class="hm-empty">—</div>';
+        return '<div class="hm-cell" style="background:'+bg+'">'+inner+'</div>';
+      }).join("");
+      return '<div class="hm-row"><div class="hm-hlbl">'+HASH_LBL[h]+'</div>'+cells+'</div>';
+    }).join("");
+    return '<div class="hm-wrap">'+
+      '<div class="hm-filter-bar">'+
+        '<button class="hm-f'+(filterType===''?' hm-f-on':'')+'" data-hmf="">All Plays</button>'+
+        '<button class="hm-f'+(filterType==="run"?' hm-f-on':'')+'" data-hmf="run">Run</button>'+
+        '<button class="hm-f'+(filterType==="pass"?' hm-f-on':'')+'" data-hmf="pass">Pass</button>'+
+        '<span class="hm-total">'+totalPlays+' play'+(totalPlays!==1?'s':'')+' charted</span>'+
+      '</div>'+
+      '<div class="hm-field">'+
+        '<div class="hm-ez hm-ez-own"><span>Own End Zone</span></div>'+
+        '<div class="hm-grid-wrap">'+
+          '<div class="hm-zone-row"><div class="hm-hlbl-spc"></div>'+zoneHdrs+'</div>'+
+          rows+
+        '</div>'+
+        '<div class="hm-ez hm-ez-opp"><span>Opp End Zone</span></div>'+
+      '</div>'+
+      '<div class="hm-legend">'+
+        '<span class="hm-leg-item"><span class="hm-swatch" style="background:#E8EBF0"></span>No plays</span>'+
+        '<span class="hm-leg-item"><span class="hm-swatch" style="background:hsl(0,65%,43%)"></span>0% eff</span>'+
+        '<span class="hm-leg-item"><span class="hm-swatch" style="background:hsl(60,65%,43%)"></span>50% eff</span>'+
+        '<span class="hm-leg-item"><span class="hm-swatch" style="background:hsl(120,65%,43%)"></span>100% eff</span>'+
+      '</div>'+
+      (totalPlays===0?'<div class="none">No plays with ball-on position data yet.</div>':'')+
+    '</div>';
+  }
+
   function renderReport(){
     document.getElementById("rbMost").classList.toggle("on", reportMode === "most");
     document.getElementById("rbLeast").classList.toggle("on", reportMode === "least");
@@ -3585,6 +3701,7 @@
     document.getElementById("rbNotes").classList.toggle("on", reportMode === "notes");
     document.getElementById("rbPlayers").classList.toggle("on", reportMode === "players");
     document.getElementById("rbStats").classList.toggle("on", reportMode === "stats");
+    document.getElementById("rbHeat").classList.toggle("on", reportMode === "heatmap");
 
     var n = plays.length;
     var wrap = document.getElementById("reportTableWrap");
@@ -3633,6 +3750,12 @@
     if(reportMode === "stats"){
       sum.innerHTML = "Comprehensive game statistics";
       wrap.innerHTML = buildGameStats(plays);
+      return;
+    }
+
+    if(reportMode === "heatmap"){
+      sum.innerHTML = "Success rate &amp; average yards by field zone and hash";
+      wrap.innerHTML = buildHeatMap(plays, hmFilter);
       return;
     }
 
@@ -3692,7 +3815,15 @@
   document.getElementById("rbNotes").addEventListener("click", function(){ reportMode="notes"; detailCall=null; renderReport(); });
   document.getElementById("rbPlayers").addEventListener("click", function(){ reportMode="players"; detailCall=null; renderReport(); });
   document.getElementById("rbStats").addEventListener("click", function(){ reportMode="stats"; detailCall=null; renderReport(); });
+  document.getElementById("rbHeat").addEventListener("click", function(){ reportMode="heatmap"; detailCall=null; hmFilter=""; renderReport(); });
   document.getElementById("reportTableWrap").addEventListener("click", function(e){
+    // heat map filter buttons
+    var hmBtn = e.target.closest("[data-hmf]");
+    if(hmBtn && reportMode === "heatmap"){
+      hmFilter = hmBtn.getAttribute("data-hmf");
+      document.getElementById("reportTableWrap").innerHTML = buildHeatMap(plays, hmFilter);
+      return;
+    }
     // drill into a play call group
     if(reportMode === "call" && !detailCall){
       var callRow = e.target.closest("tr[data-call]");
@@ -4005,6 +4136,7 @@
           '<div class="sg-stat"><div class="v good">'+rate+'%</div><div class="k">Effective</div></div>'+
           '<div class="sg-stat"><div class="v">'+(avg>0?"+":"")+avg.toFixed(1)+'</div><div class="k">Yds/play</div></div>'+
           '<button class="gbtn" data-view="'+item.id+'">'+(open?"Hide":"View")+'</button>'+
+          '<button class="gbtn" data-ghm="'+item.id+'">Heat Map</button>'+
           '<button class="gbtn" data-gcsv="'+item.id+'">CSV</button>'+
           '<button class="gbtn" data-ghudl="'+item.id+'">Hudl</button>'+
           del+
@@ -4198,6 +4330,19 @@
       var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(pool.find(function(g){return g.id===gid;})||{});
       exportGameHudl(glist, glabel); return;
     }
+    var ghm = e.target.closest("[data-ghm]");
+    if(ghm){
+      var gid = ghm.getAttribute("data-ghm");
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var gobj = gid === "current" ? {plays:plays, meta:meta} : (pool.find(function(g){return g.id===gid;})||{});
+      var gplays = gid === "current" ? plays : (gobj.plays||[]);
+      var gtitle = gid === "current" ? (meta.opp?"vs "+meta.opp:"Current game") : gameName(gobj);
+      hmModalPlays = gplays;
+      document.getElementById("hmTitle").textContent = "Heat Map — "+gtitle;
+      document.getElementById("hmBody").innerHTML = buildHeatMap(gplays, "");
+      document.getElementById("hmModal").hidden = false;
+      return;
+    }
     var v = e.target.closest("[data-view]");
     if(v){ var id=v.getAttribute("data-view"); seasonExpanded[id]=!seasonExpanded[id]; renderSeason(); return; }
     var d = e.target.closest("[data-del]");
@@ -4211,6 +4356,17 @@
   });
   document.getElementById("drillModal").addEventListener("click", function(e){
     if(e.target === this) this.hidden = true;
+  });
+  document.getElementById("hmClose").addEventListener("click", function(){
+    document.getElementById("hmModal").hidden = true;
+    hmModalPlays = null;
+  });
+  document.getElementById("hmModal").addEventListener("click", function(e){
+    if(e.target === this){ this.hidden = true; hmModalPlays = null; return; }
+    var hmBtn = e.target.closest("[data-hmf]");
+    if(hmBtn && hmModalPlays){
+      document.getElementById("hmBody").innerHTML = buildHeatMap(hmModalPlays, hmBtn.getAttribute("data-hmf"));
+    }
   });
   document.getElementById("archiveConfirm").addEventListener("click", function(){
     var name = document.getElementById("archiveName").value.trim();
