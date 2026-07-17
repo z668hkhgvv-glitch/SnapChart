@@ -467,7 +467,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.15</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.16</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -540,6 +540,7 @@
 
     <div class="row" id="seriesRow" style="display:none">
       <div class="series-hint" id="seriesHint"></div>
+      <button type="button" id="timeExpiredBtn" style="display:none;margin-left:10px;flex-shrink:0;font-size:13px;height:34px;padding:0 12px;background:var(--royal-bg);color:var(--royal);border:1.5px solid var(--royal);border-radius:8px;cursor:pointer;font-family:var(--body);font-weight:600">&#9203; Time Expired</button>
     </div>
 
     <div class="row">
@@ -909,6 +910,7 @@
             <option value="advance">Advance after each play</option>
             <option value="fixed">Fixed spot &mdash; reset after each play</option>
             <option value="simulated">Simulated game &mdash; track down &amp; distance</option>
+            <option value="timed">Timed &mdash; periods end manually</option>
           </select>
         </div>
         <div class="st-panel-footer">
@@ -1152,6 +1154,7 @@
   var currentGameId = null;
   var currentMode = "standard"; // "standard" or "7v7"
   var lastPasser = '', lastReceiver = '', lastRusher = '';
+  var timedSeries = 1;
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
   var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, ylSign:-1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
@@ -2112,7 +2115,17 @@
   }
   function updateScrimHint(){
     if(currentMode !== "scrimmage") return;
-    var idx = plays.length;                       // next play index
+    if(settings.scrimmBall === "timed"){
+      var playsThisPeriod = plays.filter(function(p){ return String(p.series) === String(timedSeries); }).length;
+      document.getElementById("seriesHint").innerHTML =
+        "Period <b>"+timedSeries+"</b> \u00b7 <b>"+playsThisPeriod+"</b> play"+(playsThisPeriod!==1?"s":"")+" logged";
+      var btn = document.getElementById("timeExpiredBtn");
+      if(btn) btn.style.display = "";
+      return;
+    }
+    var btn = document.getElementById("timeExpiredBtn");
+    if(btn) btn.style.display = "none";
+    var idx = plays.length;
     var spp = settings.effScrimPlays || 10;
     var playNum = (idx % spp) + 1;
     var series = Math.floor(idx / spp) + 1;
@@ -2129,7 +2142,7 @@
     document.getElementById("distFld").style.display = (is7 || (isScrim && !isSim)) ? "none" : "";
     document.getElementById("seriesRow").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").style.display = (is7||isScrim) ? "" : "none";
-    document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series" : "");
+    document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? (settings.scrimmBall === "timed" ? "Scrimmage \u00b7 Timed periods" : "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series") : "");
     document.getElementById("thQtrSer").textContent = isScrim ? "Ser" : "Qtr";
     document.getElementById("frontFld").style.display = is7 ? "none" : "";   // 7v7 = coverage only
     var ylSBtn = document.getElementById("ylSignBtn"), ylSHint = document.getElementById("ylHint");
@@ -2578,7 +2591,7 @@
       passer: fPasser, receiver: fReceiver, rusher: fRusher,
       simGame: _isSim || undefined
     };
-    if(isScrim){ var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; }
+    if(isScrim){ if(settings.scrimmBall === "timed"){ var _tpp = plays.filter(function(x){ return String(x.series)===String(timedSeries); }).length; p.playNum = _tpp + 1; p.series = timedSeries; } else { var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; } }
     // Auto-tag failed 4th-down conversion as Turnover (turnover on downs)
     if(currentMode === "standard" && parseInt(p.down, 10) === 4 && p.yards < parseInt(p.dist, 10)){
       if(p.tags.indexOf("Turnover") < 0) p.tags.push("Turnover");
@@ -4556,6 +4569,11 @@
   bindAC("motion","motionDrop", function(){ return uniqCI((suggest.motions||[]).concat(plays.map(function(p){return p.motion||"";})));  });
   bindAC("front","frontDrop", function(){ return uniqCI((suggest.fronts||[]).concat(plays.map(function(p){return p.front||"";})));  });
   bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
+
+  document.getElementById("timeExpiredBtn").addEventListener("click", function(){
+    timedSeries++;
+    updateScrimHint();
+  });
 
   // ---- boot ----
   load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); updateLastBackupLabel(); populatePlayerDropdowns(); updatePlayerFieldVisibility(); });
