@@ -467,7 +467,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.17</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.18</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -540,7 +540,19 @@
 
     <div class="row" id="seriesRow" style="display:none">
       <div class="series-hint" id="seriesHint"></div>
-      <button type="button" id="timeExpiredBtn" style="display:none;margin-left:10px;flex-shrink:0;font-size:13px;height:34px;padding:0 12px;background:var(--royal-bg);color:var(--royal);border:1.5px solid var(--royal);border-radius:8px;cursor:pointer;font-family:var(--body);font-weight:600">&#9203; Time Expired</button>
+      <div id="timedControls" style="display:none;align-items:center;gap:8px;margin-left:10px;flex-shrink:0;flex-wrap:wrap">
+        <div id="timedIdle" style="display:flex;align-items:center;gap:6px">
+          <input type="number" id="timedMinsInput" min="1" max="99" value="5"
+                 style="width:52px;padding:4px 6px;font-size:14px;border:1.5px solid var(--border,#D1D5DB);border-radius:6px;font-family:var(--num);text-align:center">
+          <span style="font-size:12px;color:var(--slate)">min</span>
+          <button type="button" id="timerStartBtn" style="font-size:13px;height:34px;padding:0 14px;background:var(--royal-bg);color:var(--royal);border:1.5px solid var(--royal);border-radius:8px;cursor:pointer;font-family:var(--body);font-weight:600">&#9654; Start</button>
+        </div>
+        <div id="timedActive" style="display:none;align-items:center;gap:6px">
+          <span id="timerDisplay" style="font-family:var(--num);font-size:20px;font-weight:700;color:var(--royal);min-width:56px;text-align:center">5:00</span>
+          <button type="button" id="timerPauseBtn" style="font-size:13px;height:34px;padding:0 14px;background:var(--royal-bg);color:var(--royal);border:1.5px solid var(--royal);border-radius:8px;cursor:pointer;font-family:var(--body);font-weight:600">&#9646;&#9646; Pause</button>
+        </div>
+        <button type="button" id="timeExpiredBtn" style="font-size:13px;height:34px;padding:0 12px;background:var(--royal-bg);color:var(--royal);border:1.5px solid var(--royal);border-radius:8px;cursor:pointer;font-family:var(--body);font-weight:600">&#9203; Time Expired</button>
+      </div>
     </div>
 
     <div class="row">
@@ -1161,7 +1173,10 @@
   var currentGameId = null;
   var currentMode = "standard"; // "standard" or "7v7"
   var lastPasser = '', lastReceiver = '', lastRusher = '';
-  var timedSeries = 1;
+  var timedSeries     = 1;
+  var timedIntervalId = null;
+  var timedRunning    = false;
+  var timedRemaining  = 0;
   function newGameId(){ return "g_"+Date.now()+"_"+Math.random().toString(36).slice(2,5); }
   var draft = {qtr:"1", down:"1", hash:"M", type:"run", tags:[], effective:false, effTouched:false, fdAuto:false, fdTouched:false, motionOn:false, yardSign:1, ylSign:-1, note:""};
   var DEFAULT_FORMS = ["Shotgun","Singleback","I-Form","Pistol","Empty","Trips Right","Trips Left","Goal Line","Wildcat"];
@@ -2122,18 +2137,31 @@
     hint.innerHTML = "Play <b>"+esc(draft.down)+" of "+(settings.eff7v7Plays||4)+"</b> \u00b7 reach <b>"+targetLabel(t)+"</b> \u00b7 <b>"+toGo+"</b> to go";
     refreshAutoEff();
   }
+  function fmtTime(sec){ var m=Math.floor(sec/60),s=sec%60; return m+":"+(s<10?"0":"")+s; }
+  function stopTimer(){ if(timedIntervalId){ clearInterval(timedIntervalId); timedIntervalId=null; } timedRunning=false; }
+  function tickTimer(){
+    if(timedRemaining>0){ timedRemaining--; document.getElementById("timerDisplay").textContent=fmtTime(timedRemaining); }
+    if(timedRemaining<=0) expirePeriod();
+  }
+  function startTicking(){ timedRunning=true; timedIntervalId=setInterval(tickTimer,1000); }
+  function expirePeriod(){
+    stopTimer(); timedSeries++; timedRemaining=0;
+    document.getElementById("timedActive").style.display="none";
+    document.getElementById("timedIdle").style.display="flex";
+    document.getElementById("timerPauseBtn").innerHTML="&#9646;&#9646; Pause";
+    updateScrimHint();
+  }
   function updateScrimHint(){
     if(currentMode !== "scrimmage") return;
+    var ctrl = document.getElementById("timedControls");
     if(settings.seriesType === "timed"){
-      var playsThisPeriod = plays.filter(function(p){ return String(p.series) === String(timedSeries); }).length;
+      var n = plays.filter(function(p){ return String(p.series)===String(timedSeries); }).length;
       document.getElementById("seriesHint").innerHTML =
-        "Period <b>"+timedSeries+"</b> \u00b7 <b>"+playsThisPeriod+"</b> play"+(playsThisPeriod!==1?"s":"")+" logged";
-      var btn = document.getElementById("timeExpiredBtn");
-      if(btn) btn.style.display = "";
+        "Period <b>"+timedSeries+"</b> \u00b7 <b>"+n+"</b> play"+(n!==1?"s":"")+" logged";
+      if(ctrl) ctrl.style.display="flex";
       return;
     }
-    var btn = document.getElementById("timeExpiredBtn");
-    if(btn) btn.style.display = "none";
+    if(ctrl) ctrl.style.display="none";
     var idx = plays.length;
     var spp = settings.effScrimPlays || 10;
     var playNum = (idx % spp) + 1;
@@ -4580,10 +4608,24 @@
   bindAC("front","frontDrop", function(){ return uniqCI((suggest.fronts||[]).concat(plays.map(function(p){return p.front||"";})));  });
   bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
 
-  document.getElementById("timeExpiredBtn").addEventListener("click", function(){
-    timedSeries++;
-    updateScrimHint();
+  document.getElementById("timerStartBtn").addEventListener("click", function(){
+    var mins = Math.max(1, parseInt(document.getElementById("timedMinsInput").value,10)||5);
+    timedRemaining = mins * 60;
+    document.getElementById("timerDisplay").textContent = fmtTime(timedRemaining);
+    document.getElementById("timedIdle").style.display   = "none";
+    document.getElementById("timedActive").style.display = "flex";
+    startTicking();
   });
+  document.getElementById("timerPauseBtn").addEventListener("click", function(){
+    if(timedRunning){
+      stopTimer();
+      document.getElementById("timerPauseBtn").innerHTML = "&#9654; Resume";
+    } else {
+      document.getElementById("timerPauseBtn").innerHTML = "&#9646;&#9646; Pause";
+      startTicking();
+    }
+  });
+  document.getElementById("timeExpiredBtn").addEventListener("click", expirePeriod);
 
   // ---- boot ----
   load().then(function(){ loadLibrary(); loadSettings(); applySettings(); rebuildLists(); applyMode(); refreshAutoEff(); render(); updateLastBackupLabel(); populatePlayerDropdowns(); updatePlayerFieldVisibility(); });
