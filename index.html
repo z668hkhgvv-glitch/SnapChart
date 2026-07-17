@@ -467,7 +467,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.16</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.17</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -905,12 +905,18 @@
           </div>
         </div>
         <div class="st-row">
+          <span class="st-label">Series type</span>
+          <select id="stSeriesType" class="st-input">
+            <option value="fixed">Fixed plays (set number per series)</option>
+            <option value="timed">Timed periods (end manually)</option>
+          </select>
+        </div>
+        <div class="st-row">
           <span class="st-label">Ball movement</span>
           <select id="stScrimmBall" class="st-input">
             <option value="advance">Advance after each play</option>
             <option value="fixed">Fixed spot &mdash; reset after each play</option>
             <option value="simulated">Simulated game &mdash; track down &amp; distance</option>
-            <option value="timed">Timed &mdash; periods end manually</option>
           </select>
         </div>
         <div class="st-panel-footer">
@@ -1122,6 +1128,7 @@
     defaultMode:"standard", defaultDist:10,
     effStd1:5, effStd2:50, effStd3:100, effStd4:100, effScrim:5, effScrimPlays:10,
     scrimmBall:"advance",
+    seriesType:"fixed",
     eff7v7Plays:4, eff7v7Mode:"pace",
     eff7v7Start:40, eff7v7Line1:20, eff7v7Line2:5,
     tags:["1st Down","TD","Incomplete","Sack","Penalty","Turnover"],
@@ -1204,6 +1211,7 @@
       if(d.effScrimPlays != null) settings.effScrimPlays = Math.max(1, Math.min(30, Number(d.effScrimPlays)||10));
       if(d.scrimmBall) settings.scrimmBall = d.scrimmBall;
       else if(d.scrimmFixed != null) settings.scrimmBall = d.scrimmFixed ? "fixed" : "advance"; // migrate old boolean
+      if(d.seriesType) settings.seriesType = d.seriesType;
       if(d.eff7v7Plays != null) settings.eff7v7Plays = Math.max(1, Math.min(10, Number(d.eff7v7Plays)||4));
       if(d.eff7v7Mode) settings.eff7v7Mode = d.eff7v7Mode;
       if(d.eff7v7Start != null) settings.eff7v7Start = Math.max(1, Math.min(99, Number(d.eff7v7Start)||40));
@@ -1896,6 +1904,7 @@
     document.getElementById("stEffScrimPlays").value = settings.effScrimPlays||10;
     document.getElementById("stEffScrim").value = settings.effScrim;
     document.getElementById("stScrimmBall").value = settings.scrimmBall || "advance";
+    document.getElementById("stSeriesType").value = settings.seriesType || "fixed";
     document.getElementById("stEff7v7Start").value = settings.eff7v7Start||40;
     document.getElementById("stEff7v7Line1").value = settings.eff7v7Line1||20;
     document.getElementById("stEff7v7Line2").value = settings.eff7v7Line2||5;
@@ -2115,7 +2124,7 @@
   }
   function updateScrimHint(){
     if(currentMode !== "scrimmage") return;
-    if(settings.scrimmBall === "timed"){
+    if(settings.seriesType === "timed"){
       var playsThisPeriod = plays.filter(function(p){ return String(p.series) === String(timedSeries); }).length;
       document.getElementById("seriesHint").innerHTML =
         "Period <b>"+timedSeries+"</b> \u00b7 <b>"+playsThisPeriod+"</b> play"+(playsThisPeriod!==1?"s":"")+" logged";
@@ -2142,7 +2151,7 @@
     document.getElementById("distFld").style.display = (is7 || (isScrim && !isSim)) ? "none" : "";
     document.getElementById("seriesRow").style.display = (is7||isScrim) ? "" : "none";
     document.getElementById("modeBadge").style.display = (is7||isScrim) ? "" : "none";
-    document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? (settings.scrimmBall === "timed" ? "Scrimmage \u00b7 Timed periods" : "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series") : "");
+    document.getElementById("modeBadge").textContent = is7 ? "7v7 \u00b7 pass-only" : (isScrim ? (settings.seriesType === "timed" ? "Scrimmage \u00b7 Timed periods" : "Scrimmage \u00b7 "+(settings.effScrimPlays||10)+"-play series") : "");
     document.getElementById("thQtrSer").textContent = isScrim ? "Ser" : "Qtr";
     document.getElementById("frontFld").style.display = is7 ? "none" : "";   // 7v7 = coverage only
     var ylSBtn = document.getElementById("ylSignBtn"), ylSHint = document.getElementById("ylHint");
@@ -2591,7 +2600,7 @@
       passer: fPasser, receiver: fReceiver, rusher: fRusher,
       simGame: _isSim || undefined
     };
-    if(isScrim){ if(settings.scrimmBall === "timed"){ var _tpp = plays.filter(function(x){ return String(x.series)===String(timedSeries); }).length; p.playNum = _tpp + 1; p.series = timedSeries; } else { var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; } }
+    if(isScrim){ if(settings.seriesType === "timed"){ var _tpp = plays.filter(function(x){ return String(x.series)===String(timedSeries); }).length; p.playNum = _tpp + 1; p.series = timedSeries; } else { var _spp = settings.effScrimPlays||10; p.playNum = (plays.length % _spp) + 1; p.series = Math.floor(plays.length / _spp) + 1; } }
     // Auto-tag failed 4th-down conversion as Turnover (turnover on downs)
     if(currentMode === "standard" && parseInt(p.down, 10) === 4 && p.yards < parseInt(p.dist, 10)){
       if(p.tags.indexOf("Turnover") < 0) p.tags.push("Turnover");
@@ -3192,6 +3201,7 @@
     settings.effScrimPlays = Math.max(1, Math.min(30, parseInt(document.getElementById("stEffScrimPlays").value,10)||10));
     settings.effScrim = Math.max(0, parseInt(document.getElementById("stEffScrim").value,10)||5);
     settings.scrimmBall = document.getElementById("stScrimmBall").value || "advance";
+    settings.seriesType = document.getElementById("stSeriesType").value || "fixed";
     settings.eff7v7Start = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Start").value,10)||40));
     settings.eff7v7Line1 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line1").value,10)||20));
     settings.eff7v7Line2 = Math.max(1, Math.min(99, parseInt(document.getElementById("stEff7v7Line2").value,10)||5));
