@@ -178,6 +178,7 @@
   .gbtn{font-family:var(--num);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;
     border:1.5px solid var(--line);background:#fff;color:var(--royal);border-radius:9px;height:40px;padding:0 14px;cursor:pointer}
   .gbtn.del{color:var(--bad);border-color:#eecaca}
+  .gbtn.primary{background:var(--royal);color:#fff;border-color:var(--royal)}
   .season-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
   .stab{font-family:var(--num);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;border:1.5px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;height:34px;padding:0 14px;cursor:pointer;white-space:nowrap}
   .stab.stab-active{background:var(--royal);color:#fff;border-color:var(--royal)}
@@ -467,7 +468,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.19</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.20</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -1096,6 +1097,16 @@
       <button id="hmClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
     </div>
     <div id="hmBody"></div>
+  </div>
+</div>
+
+<div class="modal-back" id="frModal" hidden>
+  <div class="modal" style="max-width:860px;width:96vw;max-height:90vh;overflow-y:auto;padding:18px 18px 22px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 id="frTitle" style="margin:0;font-size:18px"></h2>
+      <button id="frClose" class="modal-cancel" style="margin:0;flex:none;font-size:20px;line-height:1;padding:0 6px">&times;</button>
+    </div>
+    <div id="frBody"></div>
   </div>
 </div>
 
@@ -4335,7 +4346,8 @@
           '<div class="sg-stat"><div class="v">'+n+'</div><div class="k">Plays</div></div>'+
           '<div class="sg-stat"><div class="v good">'+rate+'%</div><div class="k">Effective</div></div>'+
           '<div class="sg-stat"><div class="v">'+(avg>0?"+":"")+avg.toFixed(1)+'</div><div class="k">Yds/play</div></div>'+
-          '<button class="gbtn" data-view="'+item.id+'">'+(open?"Hide":"View")+'</button>'+
+          '<button class="gbtn primary" data-gfr="'+item.id+'">Full Report</button>'+
+          '<button class="gbtn" data-view="'+item.id+'">'+(open?"Hide":"Play Log")+'</button>'+
           '<button class="gbtn" data-ghm="'+item.id+'">Heat Map</button>'+
           '<button class="gbtn" data-grz="'+item.id+'">Red Zone</button>'+
           '<button class="gbtn" data-gcsv="'+item.id+'">CSV</button>'+
@@ -4531,6 +4543,39 @@
       var glabel = gid === "current" ? (meta.opp?"vs_"+meta.opp:"current_game") : gameName(pool.find(function(g){return g.id===gid;})||{});
       exportGameHudl(glist, glabel); return;
     }
+    var gfr = e.target.closest("[data-gfr]");
+    if(gfr){
+      var gid = gfr.getAttribute("data-gfr");
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var gobj = pool.find(function(g){return g.id===gid;})||{};
+      var gplays = gobj.plays||[];
+      var gtitle = gameName(gobj);
+      var html = buildGameStats(gplays);
+      html += buildPlayersReport(gplays);
+      var hasSeries = gplays.some(function(p){return p.series!=null && p.series!=="";});
+      if(hasSeries){
+        var serNums = [];
+        gplays.forEach(function(p){ if(p.series!=null && p.series!=="" && serNums.indexOf(p.series)<0) serNums.push(p.series); });
+        serNums.sort(function(a,b){return Number(a)-Number(b);});
+        var serHtml = serNums.map(function(s){
+          var sub = gplays.filter(function(p){return p.series===s;});
+          var succ = sub.filter(function(p){return p.success;}).length;
+          var yds = sub.reduce(function(a,p){return a+(Number(p.yards)||0);},0);
+          var rate = sub.length?Math.round(100*succ/sub.length):0;
+          var avg = sub.length?(yds/sub.length).toFixed(1):"0.0";
+          return '<div class="rpt-row"><div class="rpt-label">Series '+esc(String(s))+'</div>'+
+            '<div class="rpt-stats"><span class="rpt-n">'+sub.length+' plays</span>'+
+            '<span class="rpt-avg">'+avg+' yds/play</span>'+
+            '<span class="rpt-eff" style="color:'+(rate>=50?"#15803d":"#b91c1c")+'">'+rate+'% effective</span></div>'+
+            '<div class="rpt-bar-wrap"><div class="rpt-bar" style="width:'+rate+'%"></div></div></div>';
+        }).join("");
+        html += '<div style="font-family:var(--num);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--royal);padding:4px 0 5px;border-bottom:2px solid var(--chalk);margin:12px 0 10px">By Series</div>'+serHtml;
+      }
+      document.getElementById("frTitle").textContent = gtitle;
+      document.getElementById("frBody").innerHTML = html || '<div class="none">No plays in this game.</div>';
+      document.getElementById("frModal").hidden = false;
+      return;
+    }
     var ghm = e.target.closest("[data-ghm]");
     if(ghm){
       var gid = ghm.getAttribute("data-ghm");
@@ -4569,6 +4614,12 @@
     document.getElementById("drillModal").hidden = true;
   });
   document.getElementById("drillModal").addEventListener("click", function(e){
+    if(e.target === this) this.hidden = true;
+  });
+  document.getElementById("frClose").addEventListener("click", function(){
+    document.getElementById("frModal").hidden = true;
+  });
+  document.getElementById("frModal").addEventListener("click", function(e){
     if(e.target === this) this.hidden = true;
   });
   document.getElementById("hmClose").addEventListener("click", function(){
