@@ -468,7 +468,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.26</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.27</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -4377,7 +4377,8 @@
     var del = (item.isCurrent || readOnly) ? "" : '<button class="gbtn del" data-del="'+item.id+'">Delete</button>';
     return '<div class="gcard">'+
       '<div class="gcard-top">'+
-        '<div><div class="gname">'+esc(item.name)+'</div><div class="gdate">'+esc(item.date||"")+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:6px"><span id="gname-'+item.id+'" class="gname">'+esc(item.name)+'</span><button class="gbtn" data-gedit="'+item.id+'" title="Edit name" style="padding:0 6px;font-size:14px;line-height:1;min-width:0;flex-shrink:0">&#9998;</button></div>'+
+        '<div class="gdate">'+esc(item.date||"")+'</div>'+
         '<div class="gstats">'+
           '<div class="sg-stat"><div class="v">'+n+'</div><div class="k">Plays</div></div>'+
           '<div class="sg-stat"><div class="v good">'+rate+'%</div><div class="k">Effective</div></div>'+
@@ -4646,6 +4647,35 @@
       if(confirm("Delete this saved game? This can't be undone.")){
         games = games.filter(function(g){return g.id!==gid;}); save(); renderSeason();
       } return; }
+    var ge = e.target.closest("[data-gedit]");
+    if(ge){
+      var gid = ge.getAttribute("data-gedit");
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var g = pool.filter(function(x){return x.id===gid;})[0];
+      if(!g) return;
+      var nameEl = document.getElementById("gname-"+gid);
+      if(!nameEl) return;
+      var cur = g.opponent||"";
+      nameEl.innerHTML = '<input id="gedit-inp-'+gid+'" type="text" value="'+esc(cur)+'" autocapitalize="words" style="font-family:var(--num);font-size:17px;font-weight:700;color:var(--ink);border:1.5px solid var(--royal);border-radius:6px;padding:2px 8px;width:200px;outline:none;max-width:50vw">'
+        +' <button data-gesave="'+gid+'" class="add" style="height:30px;padding:0 10px;font-size:13px">&#10003;</button>'
+        +' <button data-gecancel class="cancel" style="height:30px;padding:0 10px;font-size:13px">&#10005;</button>';
+      var inp = document.getElementById("gedit-inp-"+gid);
+      inp.focus(); inp.select();
+      inp.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter"){ ev.preventDefault(); nameEl.querySelector("[data-gesave]").click(); }
+        if(ev.key==="Escape"){ renderSeason(); }
+      });
+      return;
+    }
+    var gs = e.target.closest("[data-gesave]");
+    if(gs){
+      var gid = gs.getAttribute("data-gesave");
+      var pool = viewingSeason ? viewingSeason.games : games;
+      var g = pool.filter(function(x){return x.id===gid;})[0];
+      if(g){ var inp = document.getElementById("gedit-inp-"+gid); if(inp) g.opponent = inp.value.trim(); }
+      save(); renderSeason(); return;
+    }
+    if(e.target.closest("[data-gecancel]")){ renderSeason(); return; }
   });
   document.getElementById("drillClose").addEventListener("click", function(){
     document.getElementById("drillModal").hidden = true;
