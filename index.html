@@ -468,7 +468,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.24</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.25</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -4708,13 +4708,18 @@
       +'table{width:100%;border-collapse:collapse;font-size:12px}'
       +'th{text-align:left;font-weight:600;padding:5px 6px;border-bottom:2px solid #e5e7eb;color:#6b7280;font-size:11px;text-transform:uppercase;white-space:nowrap}'
       +'td{padding:5px 6px;border-bottom:1px solid #f3f4f6}'
-      +'@media print{body{padding:12px}}'
+      +'@media print{body{padding:12px}.no-print{display:none}}'
       +'</style></head><body>'
+      +'<div class="no-print" style="margin-bottom:16px;display:flex;align-items:center;gap:12px">'
+      +'<button onclick="window.print()" style="font-family:Inter,sans-serif;font-size:13px;padding:6px 14px;background:#16317f;color:#fff;border:none;border-radius:6px;cursor:pointer">&#128438; Save PDF</button>'
+      +'<button onclick="window.close()" style="font-family:Inter,sans-serif;font-size:13px;padding:6px 14px;background:#f3f4f6;color:#0f1830;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">&#x2190; Back to App</button>'
+      +'</div>'
       +'<h2 style="margin-bottom:16px">'+gameTitle+'</h2>'
       +bodyHtml
       +playLogHtml
       +'</body></html>');
     win.document.close();
+    win.onafterprint = function(){ win.close(); };
     setTimeout(function(){ win.print(); }, 400);
   });
   document.getElementById("hmClose").addEventListener("click", function(){
