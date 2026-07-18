@@ -467,7 +467,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.18</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.19</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -2592,9 +2592,9 @@
     var front = (currentMode === "7v7") ? "" : titleCaseWords(document.getElementById("front").value.trim());
     var coverage = titleCaseWords(document.getElementById("coverage").value.trim());
 
-    var fPasser   = settings.trackPlayers ? (document.getElementById('fPasser').value   || '') : '';
-    var fReceiver = settings.trackPlayers ? (document.getElementById('fReceiver').value || '') : '';
-    var fRusher   = settings.trackPlayers ? (document.getElementById('fRusher').value   || '') : '';
+    var fPasser   = (settings.trackPlayers && draft.type === 'pass') ? (document.getElementById('fPasser').value   || '') : '';
+    var fReceiver = (settings.trackPlayers && draft.type === 'pass') ? (document.getElementById('fReceiver').value || '') : '';
+    var fRusher   = (settings.trackPlayers && draft.type === 'run')  ? (document.getElementById('fRusher').value   || '') : '';
     if(fPasser)   lastPasser   = fPasser;
     if(fReceiver) lastReceiver = fReceiver;
     if(fRusher)   lastRusher   = fRusher;
