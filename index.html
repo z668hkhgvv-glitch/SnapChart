@@ -468,7 +468,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.20</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.21</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -999,7 +999,13 @@
       </div>
 
       <div class="st-section" data-panel="backup" hidden>
-        <div class="st-h">Backup &amp; Restore</div>
+        <div class="st-h">Repair Player Stats</div>
+        <p class="st-desc">Fixes a past bug where the passer was recorded on run plays and the rusher on pass plays, inflating per-player counts. Scans every saved game and clears mismatched fields. Safe to run more than once.</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="add" id="stRepairPlayers" style="height:44px;font-size:14px;flex:1">Fix Player Stats</button>
+          <span id="stRepairMsg" style="font-size:13px;display:none"></span>
+        </div>
+        <div class="st-h" style="margin-top:20px">Backup &amp; Restore</div>
         <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
         <div class="st-row" style="margin-bottom:10px">
           <span class="st-label">Last backup</span>
@@ -3216,6 +3222,28 @@
     saveLibrary(); rebuildLists(); renderLibEditor();
     var btn=this; btn.textContent="✓ Cleared";
     setTimeout(function(){ btn.textContent="Clear Entire Library"; }, 1800);
+  });
+  document.getElementById("stRepairPlayers").addEventListener("click", function(){
+    if(!confirm("Scan every saved game and clear player fields that don't match the play type. Continue?")) return;
+    var btn = this;
+    var msgEl = document.getElementById("stRepairMsg");
+    btn.disabled = true; btn.textContent = "Scanning…"; msgEl.style.display = "none";
+    var fixed = 0, checked = 0;
+    function fixPlays(arr){
+      arr.forEach(function(p){
+        checked++;
+        if(p.type !== "pass" && (p.passer || p.receiver)){ p.passer = ""; p.receiver = ""; fixed++; }
+        if(p.type !== "run"  && p.rusher){ p.rusher = ""; fixed++; }
+      });
+    }
+    fixPlays(plays);
+    games.forEach(function(g){ fixPlays(g.plays || []); });
+    save();
+    msgEl.style.color = "#15803d";
+    msgEl.textContent = "Done — fixed " + fixed + " of " + checked + " plays.";
+    msgEl.style.display = "inline";
+    btn.disabled = false; btn.textContent = "Fix Player Stats";
+    render();
   });
   document.getElementById("stExportBackup").addEventListener("click", exportFullBackup);
   document.getElementById("stImportBackup").addEventListener("click", function(){
