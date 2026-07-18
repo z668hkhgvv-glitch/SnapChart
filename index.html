@@ -3444,6 +3444,7 @@
   var reportMode = "most";
   var hmFilter = "";
   var hmModalPlays = null;
+  var frCurrentPlays = [];
   var detailCall = null; // when set, show only snaps for this play call (lowercase key)
   function callKey(p){ return (((p.call||"").trim()) || "(no name)").toLowerCase(); }
   function sortedPlays(mode){
@@ -4606,6 +4607,7 @@
         }).join("");
         html += '<div style="font-family:var(--num);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;color:var(--royal);padding:4px 0 5px;border-bottom:2px solid var(--chalk);margin:12px 0 10px">By Series</div>'+serHtml;
       }
+      frCurrentPlays = gplays;
       document.getElementById("frTitle").textContent = gtitle;
       document.getElementById("frBody").innerHTML = html || '<div class="none">No plays in this game.</div>';
       document.getElementById("frModal").hidden = false;
@@ -4663,9 +4665,35 @@
     var bodyHtml = document.getElementById("frBody").innerHTML;
     var win = window.open("", "_blank");
     if(!win) return;
+    var playRows = frCurrentPlays.map(function(p, i){
+      var sign = p.yards > 0 ? '+' : '';
+      var ctx = (p.series != null && p.series !== '') ? 'Ser '+p.series : 'Q'+(p.qtr||'');
+      var dn = p.down ? p.down+'&amp;'+p.dist : '&mdash;';
+      var ball = (p.yl != null && p.yl !== '') ? p.yl+' '+(p.hash||'') : '&mdash;';
+      var tags = (p.tags||[]).join(', ');
+      return '<tr>'
+        +'<td>'+(i+1)+'</td>'
+        +'<td>'+ctx+'</td>'
+        +'<td>'+dn+'</td>'
+        +'<td>'+ball+'</td>'
+        +'<td>'+(p.type||'&mdash;')+'</td>'
+        +'<td>'+(p.form||'&mdash;')+'</td>'
+        +'<td>'+(p.call||'&mdash;')+'</td>'
+        +'<td>'+tags+'</td>'
+        +'<td>'+sign+p.yards+'</td>'
+        +'<td>'+(p.success?'✓':'✗')+'</td>'
+        +'</tr>';
+    }).join('');
+    var playLogHtml = frCurrentPlays.length
+      ? '<div class="play-log-head">Play by Play</div>'
+        +'<table><thead><tr>'
+        +'<th>#</th><th>Qtr/Ser</th><th>Dn &amp; Dist</th><th>Ball On</th><th>Type</th>'
+        +'<th>Formation</th><th>Call</th><th>Tags</th><th>Yds</th><th>Eff</th>'
+        +'</tr></thead><tbody>'+playRows+'</tbody></table>'
+      : '';
     win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+gameTitle+'</title><style>'
       +'*{box-sizing:border-box;margin:0;padding:0}'
-      +'body{font-family:Inter,Arial,sans-serif;font-size:14px;color:#0f1830;padding:24px;max-width:860px;margin:0 auto}'
+      +'body{font-family:Inter,Arial,sans-serif;font-size:14px;color:#0f1830;padding:24px;max-width:960px;margin:0 auto}'
       +'h2,h3{font-family:Oswald,"Arial Narrow",sans-serif;color:#16317f;margin-bottom:8px}'
       +'.rpt-row{padding:10px 0;border-bottom:1px solid #e5e7eb}'
       +'.rpt-row:last-child{border-bottom:none}'
@@ -4676,13 +4704,15 @@
       +'.rpt-bar{height:100%;background:#1e44c4;border-radius:3px}'
       +'.report-section-head,.sec-head{font-family:Oswald,"Arial Narrow",sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;padding:14px 0 6px;border-bottom:2px solid #e5e7eb;margin-bottom:8px}'
       +'.report-empty,.none{text-align:center;padding:40px 0;color:#6b7280;font-size:14px}'
-      +'table{width:100%;border-collapse:collapse;font-size:13px}'
-      +'th{text-align:left;font-weight:600;padding:6px 8px;border-bottom:2px solid #e5e7eb;color:#6b7280;font-size:11px;text-transform:uppercase}'
-      +'td{padding:6px 8px;border-bottom:1px solid #f3f4f6}'
+      +'.play-log-head{font-family:Oswald,"Arial Narrow",sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;padding:14px 0 6px;border-bottom:2px solid #e5e7eb;margin:20px 0 8px}'
+      +'table{width:100%;border-collapse:collapse;font-size:12px}'
+      +'th{text-align:left;font-weight:600;padding:5px 6px;border-bottom:2px solid #e5e7eb;color:#6b7280;font-size:11px;text-transform:uppercase;white-space:nowrap}'
+      +'td{padding:5px 6px;border-bottom:1px solid #f3f4f6}'
       +'@media print{body{padding:12px}}'
       +'</style></head><body>'
       +'<h2 style="margin-bottom:16px">'+gameTitle+'</h2>'
       +bodyHtml
+      +playLogHtml
       +'</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 400);
