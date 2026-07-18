@@ -772,6 +772,7 @@
       <button class="stnav-item" data-sec="library">Library</button>
       <button class="stnav-item" data-sec="players">Players</button>
       <button class="stnav-item" data-sec="backup">Backup &amp; Restore</button>
+      <button class="stnav-item" data-sec="bugfixes">Bug Fixes</button>
       <button class="stnav-item" data-sec="update">App Update</button>
     </nav>
 
@@ -998,14 +999,17 @@
         </div>
       </div>
 
-      <div class="st-section" data-panel="backup" hidden>
+      <div class="st-section" data-panel="bugfixes" hidden>
         <div class="st-h">Repair Player Stats</div>
         <p class="st-desc">Fixes a past bug where the passer was recorded on run plays and the rusher on pass plays, inflating per-player counts. Scans every saved game and clears mismatched fields. Safe to run more than once.</p>
         <div style="display:flex;align-items:center;gap:10px">
           <button class="add" id="stRepairPlayers" style="height:44px;font-size:14px;flex:1">Fix Player Stats</button>
           <span id="stRepairMsg" style="font-size:13px;display:none"></span>
         </div>
-        <div class="st-h" style="margin-top:20px">Backup &amp; Restore</div>
+      </div>
+
+      <div class="st-section" data-panel="backup" hidden>
+        <div class="st-h">Backup &amp; Restore</div>
         <p class="st-desc">Export a backup file after each game. Use it to restore data on this device or move to a new iPad.</p>
         <div class="st-row" style="margin-bottom:10px">
           <span class="st-label">Last backup</span>
