@@ -1,14 +1,21 @@
 // Service worker — caches the app so it opens with no internet.
-var CACHE = "play-chart-v90";
+var CACHE = "play-chart-v91";
 var FILES = ["./", "index.html", "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", function(e){
-  self.skipWaiting();
+  // Do NOT call skipWaiting() — let the SW wait until all tabs are closed
+  // before activating. Calling skipWaiting() can force a page reload mid-session
+  // and interrupt in-flight localStorage writes, causing data loss.
   e.waitUntil(
     caches.open(CACHE).then(function(c){
       return Promise.all(FILES.map(function(f){ return c.add(f).catch(function(){}); }));
     })
   );
+});
+
+// Allow the page to trigger SW activation intentionally (e.g. on next open)
+self.addEventListener("message", function(e){
+  if(e.data === "skipWaiting") self.skipWaiting();
 });
 
 self.addEventListener("activate", function(e){

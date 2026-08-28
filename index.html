@@ -1163,10 +1163,13 @@
   "use strict";
   var KEY = "bulldogs_play_chart_v1";
   var BACKUP_KEY = "snapchart_autobak_v1";
+  var BACKUP_KEY_B = "snapchart_autobak_b_v1"; // written every 10th save
+  var BACKUP_KEY_C = "snapchart_autobak_c_v1"; // written every 50th save
   var PRECLEAR_KEY = "snapchart_preclear_v1";
   var SW_CACHE_KEY = "play-chart-v50";
   var EXPORT_TS_KEY = "snapchart_last_export";
   var LIB_KEY = "snapchart_library_v1";
+  var _saveCount = 0;
   var SETTINGS_KEY = "snapchart_settings_v1";
   var settings = {
     teamName:"Brandywine Bulldogs", coachName:"",
@@ -2038,8 +2041,12 @@
     var blob = JSON.stringify({plays:plays, meta:meta, suggest:suggest, games:games, seasons:seasons, currentGameId:currentGameId, currentMode:currentMode, settings:settings});
     var saved = false;
     try{ localStorage.setItem(KEY, blob); saved = true; } catch(e){ /* quota or error */ }
-    // mirror to backup key — failure here is non-fatal
-    try{ localStorage.setItem(BACKUP_KEY, blob); } catch(e){ /* ignore */ }
+    // Staggered backup slots — never all the same age so a single bad event
+    // can't wipe every copy simultaneously.
+    try{ localStorage.setItem(BACKUP_KEY, blob); } catch(e){}         // every save
+    _saveCount++;
+    if(_saveCount % 10 === 0){ try{ localStorage.setItem(BACKUP_KEY_B, blob); } catch(e){} }
+    if(_saveCount % 50 === 0){ try{ localStorage.setItem(BACKUP_KEY_C, blob); } catch(e){} }
     if(!saved){
       alert("WARNING: Could not save play data.\n\nStorage may be full. Try exporting a backup from Settings > Backup & Restore, then free up space on your iPad.");
     }
@@ -2052,14 +2059,18 @@
       if(raw){ var d = JSON.parse(raw); plays = d.plays||[]; meta = d.meta||meta; suggest = d.suggest||suggest; games = d.games||[]; seasons = d.seasons||[]; currentGameId = d.currentGameId||null; currentMode = d.currentMode||"standard"; if(d.settings) Object.assign(settings, d.settings); loaded = true; }
     }catch(e){ /* will try backup below */ }
     if(!loaded){
-      // try the automatic backup copy
-      try{
-        var bak = localStorage.getItem(BACKUP_KEY);
-        if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; seasons = b.seasons||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard"; if(b.settings) Object.assign(settings, b.settings);
-          alert("Your data was recovered from an automatic backup.\n\nPlease export a full backup from Settings > Backup & Restore right away.");
-          localStorage.setItem(KEY, bak); // re-write primary key
-        }
-      }catch(ex){ /* backup also missing or corrupt */ }
+      // Try backup slots in order — A (every save), B (every 10th), C (every 50th)
+      var bakKeys = [BACKUP_KEY, BACKUP_KEY_B, BACKUP_KEY_C];
+      for(var _bi = 0; _bi < bakKeys.length && !loaded; _bi++){
+        try{
+          var bak = localStorage.getItem(bakKeys[_bi]);
+          if(bak){ var b = JSON.parse(bak); plays = b.plays||[]; meta = b.meta||meta; suggest = b.suggest||suggest; games = b.games||[]; seasons = b.seasons||[]; currentGameId = b.currentGameId||null; currentMode = b.currentMode||"standard"; if(b.settings) Object.assign(settings, b.settings);
+            alert("Your data was recovered from an automatic backup (slot " + (_bi+1) + ").\n\nPlease export a full backup from Settings > Backup & Restore right away.");
+            localStorage.setItem(KEY, bak); // re-write primary key
+            loaded = true;
+          }
+        }catch(ex){}
+      }
     }
     if(!currentGameId) currentGameId = newGameId();
     if(!suggest.fronts) suggest.fronts = [];
