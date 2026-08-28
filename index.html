@@ -468,7 +468,7 @@
   <header class="board">
     <div class="board-top">
       <div>
-        <h1>SnapChart<span class="appversion">1.5.27</span></h1>
+        <h1>SnapChart<span class="appversion">1.5.28</span></h1>
         <div class="sub" id="headerSub">Brandywine Bulldogs &middot; tap to log every snap</div>
         <div id="offlineStatus" class="offstat"></div>
         <span id="modeBadge" class="modebadge" style="display:none">7v7 &middot; pass-only</span>
@@ -571,6 +571,16 @@
         <input id="call" type="text" autocomplete="off" autocapitalize="words"
                placeholder="Start typing &mdash; past entries appear">
         <div class="ac-drop" id="callDrop" hidden></div>
+      </div>
+      <div class="fld grow"><label>Tags</label>
+        <input id="playLabelFld" type="text" autocomplete="off" autocapitalize="words"
+               placeholder="Start typing &mdash; past entries appear">
+        <div class="ac-drop" id="playLabelDrop" hidden></div>
+      </div>
+      <div class="fld grow"><label>Backfield</label>
+        <input id="backfield" type="text" autocomplete="off" autocapitalize="words"
+               placeholder="Start typing &mdash; past entries appear">
+        <div class="ac-drop" id="backfieldDrop" hidden></div>
       </div>
     </div>
 
@@ -1907,6 +1917,44 @@
     }
   }
 
+    // By Tag (label field)
+    var labelMap = {};
+    playsArr.forEach(function(p){
+      var lbl = (p.label||'').trim(); if(!lbl) return;
+      if(!labelMap[lbl]) labelMap[lbl] = {n:0,yds:0,eff:0};
+      labelMap[lbl].n++; labelMap[lbl].yds += Number(p.yards)||0;
+      if(p.success) labelMap[lbl].eff++;
+    });
+    var labelKeys = Object.keys(labelMap).sort();
+    if(labelKeys.length){
+      html += secHead('By Tags');
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">';
+      labelKeys.forEach(function(lbl){
+        var s = labelMap[lbl];
+        html += card(s.n + ' <span style="font-size:14px">(' + Math.round(100*s.eff/s.n) + '%)</span>', esc(lbl), (s.yds/s.n).toFixed(1) + ' yds/play');
+      });
+      html += '</div>';
+    }
+
+    // By Backfield
+    var bfMap = {};
+    playsArr.forEach(function(p){
+      var bf = (p.backfield||'').trim(); if(!bf) return;
+      if(!bfMap[bf]) bfMap[bf] = {n:0,yds:0,eff:0};
+      bfMap[bf].n++; bfMap[bf].yds += Number(p.yards)||0;
+      if(p.success) bfMap[bf].eff++;
+    });
+    var bfKeys = Object.keys(bfMap).sort();
+    if(bfKeys.length){
+      html += secHead('By Backfield');
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">';
+      bfKeys.forEach(function(bf){
+        var s = bfMap[bf];
+        html += card(s.n + ' <span style="font-size:14px">(' + Math.round(100*s.eff/s.n) + '%)</span>', esc(bf), (s.yds/s.n).toFixed(1) + ' yds/play');
+      });
+      html += '</div>';
+    }
+
     html += '</div>';
     return html;
   }
@@ -2250,7 +2298,7 @@
     dl.innerHTML = vals.map(function(v){ return '<option value="'+esc(v)+'"></option>'; }).join("");
   }
   function closeAllAC(){
-    ["formDrop","callDrop","motionDrop","frontDrop","coverageDrop"].forEach(function(id){
+    ["formDrop","callDrop","playLabelDrop","backfieldDrop","motionDrop","frontDrop","coverageDrop"].forEach(function(id){
       var d = document.getElementById(id); if(d){ d.hidden = true; d.innerHTML = ""; }
     });
   }
@@ -2299,8 +2347,12 @@
     if(!suggest.motions) suggest.motions = [];
     if(!suggest.fronts) suggest.fronts = [];
     if(!suggest.coverages) suggest.coverages = [];
+    if(!suggest.labels) suggest.labels = [];
+    if(!suggest.backfields) suggest.backfields = [];
     var forms = uniqCI(DEFAULT_FORMS.concat(suggest.forms, plays.map(function(p){return p.form;}))).sort();
     var calls = uniqCI(suggest.calls.concat(plays.map(function(p){return p.call;}))).sort();
+    var labels = uniqCI(suggest.labels.concat(plays.map(function(p){return p.label||"";})).filter(Boolean)).sort();
+    var backfields = uniqCI(suggest.backfields.concat(plays.map(function(p){return p.backfield||"";})).filter(Boolean)).sort();
     var motions = uniqCI(suggest.motions.concat(plays.map(function(p){return p.motion;}))).sort();
     var fronts = uniqCI(suggest.fronts.concat(plays.map(function(p){return p.front;}))).sort();
     var coverages = uniqCI(suggest.coverages.concat(plays.map(function(p){return p.coverage;}))).sort();
@@ -2310,9 +2362,11 @@
     fillList("fronts", fronts);
     fillList("coverages", coverages);
   }
-  function learn(form, call, motion, front, coverage){
+  function learn(form, call, label, backfield, motion, front, coverage){
     if(form){ suggest.forms = uniqCI(suggest.forms.concat([form])); }
     if(call){ suggest.calls = uniqCI(suggest.calls.concat([call])); }
+    if(label){ suggest.labels = uniqCI((suggest.labels||[]).concat([label])); }
+    if(backfield){ suggest.backfields = uniqCI((suggest.backfields||[]).concat([backfield])); }
     if(motion){ suggest.motions = uniqCI((suggest.motions||[]).concat([motion])); }
     if(front){ suggest.fronts = uniqCI((suggest.fronts||[]).concat([front])); }
     if(coverage){ suggest.coverages = uniqCI((suggest.coverages||[]).concat([coverage])); }
@@ -2590,6 +2644,8 @@
     document.getElementById("yards").value = "";
     document.getElementById("call").value = "";
     document.getElementById("form").value = "";
+    document.getElementById("playLabelFld").value = "";
+    document.getElementById("backfield").value = "";
     document.getElementById("front").value = "";
     document.getElementById("coverage").value = "";
     draft.tags = [];
@@ -2612,6 +2668,8 @@
     var yards = getYards();
     var form = titleCaseWords(document.getElementById("form").value.trim());
     var call = titleCaseWords(document.getElementById("call").value.trim());
+    var label = titleCaseWords(document.getElementById("playLabelFld").value.trim());
+    var backfield = titleCaseWords(document.getElementById("backfield").value.trim());
     var motion = draft.motionOn ? titleCaseWords(document.getElementById("motion").value.trim()) : "";
     var front = (currentMode === "7v7") ? "" : titleCaseWords(document.getElementById("front").value.trim());
     var coverage = titleCaseWords(document.getElementById("coverage").value.trim());
@@ -2628,11 +2686,12 @@
       if(ep){
         ep.qtr=draft.qtr; ep.down=draft.down; ep.dist=dist;
         ep.yl=getYL(); ep.hash=draft.hash; ep.type=draft.type;
-        ep.form=form; ep.call=call; ep.motion=motion; ep.front=front; ep.coverage=coverage; ep.yards=yards;
+        ep.form=form; ep.call=call; ep.label=label; ep.backfield=backfield;
+        ep.motion=motion; ep.front=front; ep.coverage=coverage; ep.yards=yards;
         ep.tags=draft.tags.slice(); ep.success=draft.effective; ep.auto=!draft.effTouched; ep.note=draft.note;
         ep.passer=fPasser; ep.receiver=fReceiver; ep.rusher=fRusher;
       }
-      learn(form, call, motion, front, coverage);
+      learn(form, call, label, backfield, motion, front, coverage);
       finishEntry(false);
       save(); render();
       return;
@@ -2647,7 +2706,8 @@
       mode: currentMode,
       qtr: draft.qtr, down: (isScrim && !_isSim) ? "" : draft.down, dist: (isScrim && !_isSim) ? "" : dist,
       yl: getYL(), hash: draft.hash, type: draft.type,
-      form: form, call: call, motion: motion, front: front, coverage: coverage, yards: yards,
+      form: form, call: call, label: label, backfield: backfield,
+      motion: motion, front: front, coverage: coverage, yards: yards,
       tags: draft.tags.slice(), success: draft.effective, auto: !draft.effTouched, note: draft.note,
       passer: fPasser, receiver: fReceiver, rusher: fRusher,
       simGame: _isSim || undefined
@@ -2659,7 +2719,7 @@
       p.success = false;
     }
     plays.push(p);
-    learn(form, call, motion, front, coverage);
+    learn(form, call, label, backfield, motion, front, coverage);
 
     // Penalty in standard mode: ask coach if down is replayed before advancing
     if(p.tags.indexOf("Penalty") > -1 && currentMode === "standard"){
@@ -2827,6 +2887,8 @@
     document.getElementById("yl").value = Math.abs(ylNum) || "";
     document.getElementById("form").value = p.form;
     document.getElementById("call").value = p.call;
+    document.getElementById("playLabelFld").value = p.label || "";
+    document.getElementById("backfield").value = p.backfield || "";
     document.getElementById("yards").value = Math.abs(p.yards);
     draft.yardSign = (Number(p.yards) < 0) ? -1 : 1; paintYardSign();
     draft.motionOn = !!p.motion;
@@ -3422,20 +3484,20 @@
   function exportGameCSV(list, label){
     if(!list.length){ alert("No plays to export."); return; }
     var rLookup = {}; (settings.roster||[]).forEach(function(p){ rLookup[p.id]='#'+p.jersey+' '+p.name; });
-    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","Motion","Front","Coverage","PlayCall","Yards","Effective","Tags","Notes","Passer","Receiver","Rusher"];
+    var head = ["#","Qtr","Down","ToGo","BallOn","Hash","Type","Formation","PlayCall","Tags","Backfield","Motion","Front","Coverage","Yards","Effective","ResultTags","Notes","Passer","Receiver","Rusher"];
     var lines = [head.join(",")];
     list.forEach(function(p,i){
-      lines.push([i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.motion||"",p.front||"",p.coverage||"",p.call,p.yards,p.success?"Y":"N",(p.tags||[]).join(" | "),p.note||"",rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
+      lines.push([i+1,p.qtr,p.down,p.dist,p.yl,p.hash,p.type,p.form,p.call,p.label||"",p.backfield||"",p.motion||"",p.front||"",p.coverage||"",p.yards,p.success?"Y":"N",(p.tags||[]).join("|"),p.note||"",rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
     });
     dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+".csv", lines.join("\n"));
   }
   function exportGameHudl(list, label){
     if(!list.length){ alert("No plays to export."); return; }
     var rLookup = {}; (settings.roster||[]).forEach(function(p){ rLookup[p.id]='#'+p.jersey+' '+p.name; });
-    var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF","PASSER","RECEIVER","RUSHER"];
+    var head = ["Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","TAGS","BACKFIELD","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF","PASSER","RECEIVER","RUSHER"];
     var lines = [head.join(",")];
     list.forEach(function(p,i){
-      lines.push([i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N"),rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
+      lines.push([i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.label||"",p.backfield||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N"),rLookup[p.passer]||p.passer||"",rLookup[p.receiver]||p.receiver||"",rLookup[p.rusher]||p.rusher||""].map(csvEsc).join(","));
     });
     dlFile(label.replace(/[^a-zA-Z0-9_-]/g,"_")+"-hudl.csv", lines.join("\n"));
   }
@@ -4494,11 +4556,11 @@
     dlFile((settings.teamName||"team").replace(/[^a-zA-Z0-9_-]/g,"_")+"-"+label+".csv", lines.join("\n"));
   }
   function exportSeasonHudl(){
-    var head = ["Game","Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
+    var head = ["Game","Play #","QTR","ODK","DN","DIST","HASH","YARD LN","OFF FORM","PLAY TYPE","PLAY","TAGS","BACKFIELD","MOTION","DEF FRONT","COVERAGE","GN/LS","EFF"];
     var lines = [head.join(",")];
     function addRows(label, list){
       list.forEach(function(p,i){
-        lines.push([label,i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
+        lines.push([label,i+1,p.qtr||"","O",p.down||"",p.dist||"",p.hash||"",p.yl||"",p.form||"",(p.type==="run"?"Run":"Pass"),p.call||"",p.label||"",p.backfield||"",p.motion||"",p.front||"",p.coverage||"",p.yards,(p.success?"Y":"N")].map(csvEsc).join(","));
       });
     }
     if(viewingSeason){
@@ -4825,6 +4887,8 @@
   // ---- autocomplete dropdowns ----
   bindAC("form","formDrop", function(){ return uniqCI(DEFAULT_FORMS.concat(suggest.forms||[], plays.map(function(p){return p.form||"";})));  });
   bindAC("call","callDrop", function(){ return uniqCI((suggest.calls||[]).concat(plays.map(function(p){return p.call||"";})));  });
+  bindAC("playLabelFld","playLabelDrop", function(){ return uniqCI((suggest.labels||[]).concat(plays.map(function(p){return p.label||"";})).filter(Boolean));  });
+  bindAC("backfield","backfieldDrop", function(){ return uniqCI((suggest.backfields||[]).concat(plays.map(function(p){return p.backfield||"";})).filter(Boolean));  });
   bindAC("motion","motionDrop", function(){ return uniqCI((suggest.motions||[]).concat(plays.map(function(p){return p.motion||"";})));  });
   bindAC("front","frontDrop", function(){ return uniqCI((suggest.fronts||[]).concat(plays.map(function(p){return p.front||"";})));  });
   bindAC("coverage","coverageDrop", function(){ return uniqCI((suggest.coverages||[]).concat(plays.map(function(p){return p.coverage||"";})));  });
