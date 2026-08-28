@@ -1219,7 +1219,8 @@
   function saveLibrary(){
     try{ localStorage.setItem(LIB_KEY, JSON.stringify({
       forms: suggest.forms||[], calls: suggest.calls||[], motions: suggest.motions||[],
-      fronts: suggest.fronts||[], coverages: suggest.coverages||[]
+      fronts: suggest.fronts||[], coverages: suggest.coverages||[],
+      labels: suggest.labels||[], backfields: suggest.backfields||[]
     })); }catch(e){}
   }
   function loadLibrary(){
@@ -1232,6 +1233,8 @@
       suggest.motions   = libSort(uniqCI((suggest.motions||[]).concat(lib.motions||[])));
       suggest.fronts    = libSort(uniqCI((suggest.fronts||[]).concat(lib.fronts||[])));
       suggest.coverages = libSort(uniqCI((suggest.coverages||[]).concat(lib.coverages||[])));
+      suggest.labels    = libSort(uniqCI((suggest.labels||[]).concat(lib.labels||[])));
+      suggest.backfields= libSort(uniqCI((suggest.backfields||[]).concat(lib.backfields||[])));
       saveLibrary(); // persist the merged result immediately (migrates old data on first run)
     }catch(e){}
   }
