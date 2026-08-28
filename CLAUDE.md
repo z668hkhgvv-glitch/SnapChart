@@ -1,5 +1,14 @@
 # SnapChart — project guide for Claude Code
 
+## MANDATORY: Version bump on every single commit
+**Every commit that touches any file must bump BOTH:**
+1. `<span class="appversion">X.X.X</span>` in `index.html`
+2. `var CACHE = "play-chart-vN"` in `sw.js`
+
+No exceptions. Bug fixes, storage changes, one-line tweaks — all get a version bump.
+The version number is the only way the coach can verify a fix is running on the iPad.
+Skipping this is not acceptable.
+
 SnapChart is a football sideline play-charting app. A coach taps every snap into
 an iPad; the app grades each play, shows live tendencies, suggests calls, and
 exports data. It is a **single-file web app (PWA)** that runs offline once added
